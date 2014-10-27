@@ -1,5 +1,5 @@
 
-class Type():
+class TYPE():
     R_0 = "\x00"
     CONNECT = "\01"
     CONNACK = "\x02"

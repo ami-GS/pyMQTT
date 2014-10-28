@@ -1,11 +1,78 @@
-from settings import TYPE
-from binascii import hexlify
+from settings import *
+from binascii import hexlify, unhexlify
 
-def makeHeader(t, dup, qos, retain, length):
-    byte1 = hex(t)[2:] + hex(int(str(dup)+bin(qos)[2:].zfill(2)+str(retain), 2))[2:]
-    h = hex(length)[2:]
-    byte2 = "".join([hex(l)[2:].zfill(2) for l in encodeRestLen(length)])
-    return byte1 + byte2
+willQoS = 3 #temporaly
+
+def makeFrame(t, dup, qos, retain, **kwargs):
+    data = ""
+    def makeHeader(length):
+        #not cool
+        byte1 = hexlify(t)[1] + hex(int(str(dup)+bin(qos)[2:].zfill(2)+str(retain), 2))[2:]
+        byte2 = "".join([hex(l)[2:].zfill(2) for l in encodeRestLen(length)])
+        return unhexlify(byte1 + byte2)
+
+    def connect():
+        # this hard code is not cool
+        frame = "\x00\x06"
+        frame += CONNECT_PROTOCOL
+        frame += unhexlify(str(PROTOCOL_VERSION).zfill(2))
+        flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
+        flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
+        flag |= 1 << 5 if kwargs["will"] else 0 << 5 # for future use
+        flag |= willQoS << 3 if kwargs["will"] else 0 << 3
+        flag |= 1 << 2 if kwargs["will"] else 0 << 2
+        flag |= 1 << 1 if kwargs["clean"] else 0 << 1
+        frame += unhexlify(hex(flag)[2:].zfill(2))
+        frame += unhexlify(hex(KEEP_ALIVE)[2:].zfill(4))
+        # connect seems not to use qos, but document write about qos used
+        frame += "cliID" if qos else ""
+        frame += "" #TODO: append depends on will
+        frame += kwargs["name"] if kwargs.has_key("name") else ""
+        frame += kwargs["passwd"] if kwargs.has_key("passwd") else ""
+        return frame
+
+    def connack():
+        frame = "\x00"
+        frame += kwargs["code"]
+        return frame
+
+    def publish():
+        pass
+
+    if t == TYPE.CONNECT:
+        data = connect()
+    elif t == TYPE.CONNACK:
+        data = connack()
+    elif t == TYPE.PUBLISH:
+        pass
+    elif t == TYPE.PUBACK:
+        pass
+    elif t == TYPE.PUBREC:
+        pass
+    elif t == TYPE.PUBREL:
+        pass
+    elif t == TYPE.PUBCOMP:
+        pass
+    elif t == TYPE.SUBSCRIBE:
+        pass
+    elif t == TYPE.SUBACK:
+        pass
+    elif t == TYPE.UNSUBSCRIBE:
+        pass
+    elif t == TYPE.UNSUBACK:
+        pass
+    elif t == TYPE.PINGREQ:
+        pass
+    elif t == TYPE.PINGRESP:
+        pass
+    elif t == TYPE.DISCONNECT:
+        pass
+    else:
+        print("undefined type")
+
+    return makeHeader(len(data)) + data
+
+
 
 def parseHeader(header):
     byte1 = int(hexlify(header[0]), 16)

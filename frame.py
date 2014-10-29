@@ -63,6 +63,31 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         frame = hex(kwargs["messageID"])[2:].zfill(4)
         return frame
 
+    def subscribe():
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        # looks not cool
+        for i in len(kwargs["sub"]):
+            frame += hex(len(kwargs["sub"][i]))[2:].zfill(4) + kwargs["sub"][i]
+            frame += hex(kwargs["qos"][i])[2:].zfill(2)
+        return frame
+
+    def suback():
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        for q in kwargs["qos"]:
+            frame += q
+        return frame
+
+    def unsubscribe():
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        for sub in kwargs["sub"]:
+            frame += hex(len(sub[0]))[2:].zfill(4) + sub[0]
+        return frame
+
+    def unsuback():
+        #response to unsubscribe
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        return frame
+
     if t == TYPE.CONNECT:
         data = connect()
     elif t == TYPE.CONNACK:
@@ -78,13 +103,13 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     elif t == TYPE.PUBCOMP:
         data = pubcomp()
     elif t == TYPE.SUBSCRIBE:
-        pass
+        data = subscribe()
     elif t == TYPE.SUBACK:
-        pass
+        data = suback()
     elif t == TYPE.UNSUBSCRIBE:
-        pass
+        data = unsubscribe()
     elif t == TYPE.UNSUBACK:
-        pass
+        data = unsuback()
     elif t == TYPE.PINGREQ:
         pass
     elif t == TYPE.PINGRESP:

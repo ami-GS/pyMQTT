@@ -37,22 +37,46 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         return frame
 
     def publish():
-        pass
+        pub = kwargs["pub"]
+        frame = hex(len(pub))[2:].zfill(4)
+        frame += pub
+        frame += hex(kwargs["messageID"])[2:].zfill(4) if qos else ""
+        return frame
+
+    def puback():
+        # for qos == 1
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        return frame
+
+    def pubrec():
+        # for qos == 2
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        return frame
+
+    def pubrel():
+        # for qos == 2 and response to pubrec
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        return frame
+
+    def pubcomp():
+        # for qos == 2 and response to pubrel
+        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        return frame
 
     if t == TYPE.CONNECT:
         data = connect()
     elif t == TYPE.CONNACK:
         data = connack()
     elif t == TYPE.PUBLISH:
-        pass
+        data = publish()
     elif t == TYPE.PUBACK:
-        pass
+        data = puback()
     elif t == TYPE.PUBREC:
-        pass
+        data = pubrec()
     elif t == TYPE.PUBREL:
-        pass
+        data = pubrel()
     elif t == TYPE.PUBCOMP:
-        pass
+        data = pubcomp()
     elif t == TYPE.SUBSCRIBE:
         pass
     elif t == TYPE.SUBACK:

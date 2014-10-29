@@ -66,21 +66,23 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def subscribe():
         frame = hex(kwargs["messageID"])[2:].zfill(4)
         # looks not cool
-        for i in len(kwargs["sub"]):
-            frame += hex(len(kwargs["sub"][i]))[2:].zfill(4) + kwargs["sub"][i]
-            frame += hex(kwargs["qos"][i])[2:].zfill(2)
+        for i in range(len(kwargs["sub"])):
+            frame += hex(len(kwargs["sub"][i]))[2:].zfill(4)
+            frame += "".join([hex(ord(c))[2:].zfill(2) for c in kwargs["sub"][i]])
+            frame += hex(kwargs["qosList"][i])[2:].zfill(2)
         return frame
 
     def suback():
         frame = hex(kwargs["messageID"])[2:].zfill(4)
-        for q in kwargs["qos"]:
-            frame += q
+        for q in kwargs["qosList"]:
+            frame += hex(q)[2:].zfill(2)
         return frame
 
     def unsubscribe():
         frame = hex(kwargs["messageID"])[2:].zfill(4)
         for sub in kwargs["sub"]:
-            frame += hex(len(sub[0]))[2:].zfill(4) + sub[0]
+            frame += hex(len(sub[0]))[2:].zfill(4)
+            frame += "".join([hex(ord(c))[2:].zfill(2) for c in sub])
         return frame
 
     def unsuback():
@@ -111,17 +113,16 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     elif t == TYPE.UNSUBACK:
         data = unsuback()
     elif t == TYPE.PINGREQ:
-        pass
+        data = "" # no payload
     elif t == TYPE.PINGRESP:
-        pass
+        data = "" # no payload
     elif t == TYPE.DISCONNECT:
-        pass
+        data = "" # no payload, I have to manage 'Clean session' flag
     else:
         print("undefined type")
 
     data = unhexlify(data)
     return makeHeader(len(data)) + data
-
 
 
 def parseHeader(header):

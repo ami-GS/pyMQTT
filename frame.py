@@ -13,33 +13,33 @@ def makeFrame(t, dup, qos, retain, **kwargs):
 
     def connect():
         # this hard code is not cool
-        frame = "\x00\x06"
-        frame += CONNECT_PROTOCOL
-        frame += unhexlify(str(PROTOCOL_VERSION).zfill(2))
+        frame = "0006"
+        frame += "".join([hex(ord(c))[2:].zfill(2) for c in CONNECT_PROTOCOL])
+        frame += hex(PROTOCOL_VERSION)[2:].zfill(2)
         flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
         flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
         flag |= 1 << 5 if kwargs["will"] else 0 << 5 # for future use
         flag |= willQoS << 3 if kwargs["will"] else 0 << 3
         flag |= 1 << 2 if kwargs["will"] else 0 << 2
         flag |= 1 << 1 if kwargs["clean"] else 0 << 1
-        frame += unhexlify(hex(flag)[2:].zfill(2))
-        frame += unhexlify(hex(KEEP_ALIVE)[2:].zfill(4))
+        frame += hex(flag)[2:].zfill(2)
+        frame += hex(KEEP_ALIVE)[2:].zfill(4)
         # connect seems not to use qos, but document write about qos used
-        frame += "cliID" if qos else ""
+        frame += "".join([hex(ord(c))[2:].zfill(2) for c in "cliID"]) if qos else ""
         frame += "" #TODO: append depends on will
-        frame += kwargs["name"] if kwargs.has_key("name") else ""
-        frame += kwargs["passwd"] if kwargs.has_key("passwd") else ""
+        frame += "".join([hex(ord(c))[2:].zfill(2) for c in kwargs["name"]]) if kwargs.has_key("name") else ""
+        frame += "".join([hex(ord(c))[2:].zfill(2) for c in kwargs["passwd"]]) if kwargs.has_key("passwd") else ""
         return frame
 
     def connack():
-        frame = "\x00"
-        frame += kwargs["code"]
+        frame = "00"
+        frame += hexlify(kwargs["code"])
         return frame
 
     def publish():
         pub = kwargs["pub"]
         frame = hex(len(pub))[2:].zfill(4)
-        frame += pub
+        frame += "".join([hex(ord(c))[2:].zfill(2) for c in  pub])
         frame += hex(kwargs["messageID"])[2:].zfill(4) if qos else ""
         return frame
 
@@ -94,6 +94,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     else:
         print("undefined type")
 
+    data = unhexlify(data)
     return makeHeader(len(data)) + data
 
 

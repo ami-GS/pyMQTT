@@ -124,6 +124,146 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     data = unhexlify(data)
     return makeHeader(len(data)) + data
 
+def parseFrame(data):
+    #t, dup, qos, retain, length = "", 0, 0, 0, 0
+    def parseHeader(header):
+        byte1 = int(hexlify(header[0]), 16)
+        t = (byte1 & 0xf0) >> 4
+        dub = (byte1 & 0x08) >> 3
+        qos = (byte1 & 0x06) >> 1
+        retain = byte1 & 0x01
+        restLen, idx = decodeRestLen([int(hexlify(x), 16) for x in header[1:]])
+        return t, dub, qos, retain, restLen, idx
+
+    def connect(data):
+        # TODO: client object should be made to save these flags
+        protoLen = int(hexlify(data[:2]), 16)
+        proto = data[2:8]
+        protoVersion = int(hexlify(data[8]), 16)
+        flags = int(hexlify(data[9]), 16)
+        keepAlive = int(hexlify(data[10:11]), 16)
+
+        # ? cliID = data[12:]
+
+        if flags & 0x80:
+            name
+        if flags & 0x40:
+            passwd
+        if flags & 0x04:
+            willTopic
+            willMessage
+        if flags & 0x02:
+            pass
+            # for clean session
+        #if flags & 0x01:
+
+    def connack(data):
+        topicCompress = data[0]
+        code = data[1]
+
+    def publish(data):
+        topicLen = int(hexlify(data[:2]), 16)
+        topic = data[2:2+topicLen]
+        messageID = int(hexlify(data[2+topicLen:4+topicLen]), 16)
+        pubData = data[4+topicLen]
+        if qos == 1:
+            pass # send puback
+        elif qos == 2:
+            pass # send pucrec
+
+    def puback(data):
+        messageID = int(hexlify(data[:2]), 16)
+        # delete message ?
+
+    def pubrec(data):
+        messageID = int(hexlify(data[:2]), 16)
+        # send pubrel
+
+    def pubrel(data):
+        messageID = int(hexlify(data[:2]), 16)
+        # send pubcomp
+
+    def pubcomp(data):
+        messageID = int(hexlify(data[:2]), 16)
+        # delete message ?
+
+    def subscribe(data):
+        messageID = int(hexlify(data[:2]), 16)
+        data = data[2:]
+        while data:
+            topicLen = int(hexlify(data[:2]), 16)
+            topic = data[2:2+topicLen]
+            reqQoS = int(hexlify(data[2+topicLen]), 16)
+            # do something
+            data = data[3+topicLen:]
+
+        # publish may be sent
+        # send suback
+
+    def suback(data):
+        messageID = int(hexlify(data[:2]), 16)
+        for q in data[2:]:
+            allowedQoS =int(hexlify(q), 16)
+            pass # do something
+
+    def unsubscribe(data):
+        messageID = int(hexlify(data[:2]), 16)
+        data = data[2:]
+        while data:
+            topicLen = int(hexlify(data[:2]), 16)
+            topic = data[2:2+topicLen]
+            # do something
+            data = data[2+topicLen:]
+        # send unsuback
+
+    def unsuback(data):
+        messageID = int(hexlify(data[:2]), 16)
+
+    def pingreq(data):
+        pass
+        # send pingresp
+
+    def pingresp(data):
+        pass
+
+    def disconnect(data):
+        # do something based on clean session info
+        # disconnect TCP
+        pass
+
+    t, dup, qos, retain, length, idx = parseHeader(data[:2])
+    data = data[1+idx:]
+
+    if t == TYPE.CONNECT:
+        connect(data)
+    elif t == TYPE.CONNACK:
+        connack(data)
+    elif t == TYPE.PUBLISH:
+         publish(data)
+    elif t == TYPE.PUBACK:
+         puback(data)
+    elif t == TYPE.PUBREC:
+         pubrec(data)
+    elif t == TYPE.PUBREL:
+         pubrel(data)
+    elif t == TYPE.PUBCOMP:
+         pubcomp(data)
+    elif t == TYPE.SUBSCRIBE:
+         subscribe(data)
+    elif t == TYPE.SUBACK:
+         suback(data)
+    elif t == TYPE.UNSUBSCRIBE:
+         unsubscribe(data)
+    elif t == TYPE.UNSUBACK:
+         unsuback(data)
+    elif t == TYPE.PINGREQ:
+        pingreq(data)
+    elif t == TYPE.PINGRESP:
+         pingresp(data)
+    elif t == TYPE.DISCONNECT:
+         disconnect(data)
+    else:
+        print("undefined type")
 
 def parseHeader(header):
     byte1 = int(hexlify(header[0]), 16)
@@ -152,4 +292,4 @@ def decodeRestLen(X):
         value += (X[idx] & 0x7f) * multiplier
         multiplier *= 0x80
         idx += 1
-    return value
+    return value, idx

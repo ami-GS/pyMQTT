@@ -1,5 +1,6 @@
 from settings import *
 from binascii import hexlify, unhexlify
+from util import upackHex
 
 willQoS = 3 #temporaly
 
@@ -8,7 +9,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def makeHeader(length):
         #not cool
         byte1 = hexlify(t)[1] + hex(int(str(dup)+bin(qos)[2:].zfill(2)+str(retain), 2))[2:]
-        byte2 = "".join([hex(l)[2:].zfill(2) for l in encodeRestLen(length)])
+        byte2 = "".join([hex(l)[2:].zfill(2) for l in encodeRestLen(length)]) if length else "00"
         return unhexlify(byte1 + byte2)
 
     def connect():
@@ -125,33 +126,32 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     return makeHeader(len(data)) + data
 
 def parseFrame(data):
-    #t, dup, qos, retain, length = "", 0, 0, 0, 0
     def parseHeader(header):
-        byte1 = int(hexlify(header[0]), 16)
-        t = (byte1 & 0xf0) >> 4
+        byte1 = upackHex(header[0])
+        t = unhexlify(hex((byte1 & 0xf0) >> 4)[2:].zfill(2))
         dub = (byte1 & 0x08) >> 3
         qos = (byte1 & 0x06) >> 1
         retain = byte1 & 0x01
-        restLen, idx = decodeRestLen([int(hexlify(x), 16) for x in header[1:]])
+        restLen, idx = decodeRestLen([upackHex(x) for x in header[1:]])
         return t, dub, qos, retain, restLen, idx
 
     def connect(data):
         # TODO: client object should be made to save these flags
-        protoLen = int(hexlify(data[:2]), 16)
+        ptoroLen = upackHex(data[:2])
         proto = data[2:8]
-        protoVersion = int(hexlify(data[8]), 16)
-        flags = int(hexlify(data[9]), 16)
-        keepAlive = int(hexlify(data[10:11]), 16)
+        protoVersion = upackHex(data[8])
+        flags = upackHex(data[9])
+        keepAlive = upackHex(data[10:11])
 
         # ? cliID = data[12:]
 
         if flags & 0x80:
-            name
+            pass#name
         if flags & 0x40:
-            passwd
+            pass#passwd
         if flags & 0x04:
-            willTopic
-            willMessage
+            pass#willTopic
+            #willMessage
         if flags & 0x02:
             pass
             # for clean session
@@ -162,38 +162,38 @@ def parseFrame(data):
         code = data[1]
 
     def publish(data):
-        topicLen = int(hexlify(data[:2]), 16)
+        topicLen = upackHex(data[:2])
         topic = data[2:2+topicLen]
-        messageID = int(hexlify(data[2+topicLen:4+topicLen]), 16)
-        pubData = data[4+topicLen]
+        messageID = upackHex(data[2+topicLen:4+topicLen])
+        pubData = data[4+topicLen:] if len(data[4+topicLen:]) else "" # correct?
         if qos == 1:
             pass # send puback
         elif qos == 2:
             pass # send pucrec
 
     def puback(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         # delete message ?
 
     def pubrec(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         # send pubrel
 
     def pubrel(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         # send pubcomp
 
     def pubcomp(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         # delete message ?
 
     def subscribe(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         data = data[2:]
         while data:
-            topicLen = int(hexlify(data[:2]), 16)
+            topicLen = upackHex(data[:2])
             topic = data[2:2+topicLen]
-            reqQoS = int(hexlify(data[2+topicLen]), 16)
+            reqQos = upackHex(data[2+topicLen])
             # do something
             data = data[3+topicLen:]
 
@@ -201,23 +201,23 @@ def parseFrame(data):
         # send suback
 
     def suback(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         for q in data[2:]:
-            allowedQoS =int(hexlify(q), 16)
+            allowedQoS = upackHex(q)
             pass # do something
 
     def unsubscribe(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
         data = data[2:]
         while data:
-            topicLen = int(hexlify(data[:2]), 16)
+            topicLen = upackHex(data[:2])
             topic = data[2:2+topicLen]
             # do something
             data = data[2+topicLen:]
         # send unsuback
 
     def unsuback(data):
-        messageID = int(hexlify(data[:2]), 16)
+        messageID = upackHex(data[:2])
 
     def pingreq(data):
         pass
@@ -264,15 +264,6 @@ def parseFrame(data):
          disconnect(data)
     else:
         print("undefined type")
-
-def parseHeader(header):
-    byte1 = int(hexlify(header[0]), 16)
-    t = (byte1 & 0xf0) >> 4
-    dub = (byte1 & 0x08) >>3
-    qos = (byte1 & 0x06) >> 1
-    retain = byte1 & 0x01
-    restLen = decodeRestLen([int(hexlify(x), 16) for x in header[1:]])
-    return t, dub, qos, retain, restLen
 
 def encodeRestLen(X):
     output = []

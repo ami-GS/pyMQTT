@@ -15,7 +15,8 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def connect():
         # this hard code is not cool
         frame = "0006"
-        frame += "".join([packHex(c) for c in CONNECT_PROTOCOL])
+        frame += packHex(CONNECT_PROTOCOL)
+#"".join([packHex(c) for c in CONNECT_PROTOCOL])
         frame += hex(PROTOCOL_VERSION)[2:].zfill(2)
         flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
         flag |= 1 << 6 if kwargs["passwd"] else 0 << 6

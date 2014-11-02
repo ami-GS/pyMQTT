@@ -1,6 +1,6 @@
 from settings import *
 from binascii import hexlify, unhexlify
-from util import upackHex
+from util import upackHex, packHex
 
 willQoS = 3 #temporaly
 
@@ -9,13 +9,13 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def makeHeader(length):
         #not cool
         byte1 = hexlify(t)[1] + hex(int(str(dup)+bin(qos)[2:].zfill(2)+str(retain), 2))[2:]
-        byte2 = "".join([hex(l)[2:].zfill(2) for l in encodeRestLen(length)]) if length else "00"
+        byte2 = "".join([packHex(l) for l in encodeRestLen(length)]) if length else "00"
         return unhexlify(byte1 + byte2)
 
     def connect():
         # this hard code is not cool
         frame = "0006"
-        frame += "".join([hex(ord(c))[2:].zfill(2) for c in CONNECT_PROTOCOL])
+        frame += "".join([packHex(c) for c in CONNECT_PROTOCOL])
         frame += hex(PROTOCOL_VERSION)[2:].zfill(2)
         flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
         flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
@@ -23,13 +23,14 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         flag |= willQoS << 3 if kwargs["will"] else 0 << 3
         flag |= 1 << 2 if kwargs["will"] else 0 << 2
         flag |= 1 << 1 if kwargs["clean"] else 0 << 1
-        frame += hex(flag)[2:].zfill(2)
-        frame += hex(KEEP_ALIVE)[2:].zfill(4)
+        frame += packHex(flag)
+        frame += packHex(KEEP_ALIVE, 4)
         # connect seems not to use qos, but document write about qos used
-        frame += "".join([hex(ord(c))[2:].zfill(2) for c in "cliID"]) if qos else ""
+        frame += packHex(kwargs["cliID"]) if qos else ""
         frame += "" #TODO: append depends on will
-        frame += "".join([hex(ord(c))[2:].zfill(2) for c in kwargs["name"]]) if kwargs.has_key("name") else ""
-        frame += "".join([hex(ord(c))[2:].zfill(2) for c in kwargs["passwd"]]) if kwargs.has_key("passwd") else ""
+        frame += packHex(kwargs["name"]) if kwargs.has_key("name") else ""
+        frame += packHex(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
+
         return frame
 
     def connack():
@@ -39,56 +40,56 @@ def makeFrame(t, dup, qos, retain, **kwargs):
 
     def publish():
         pub = kwargs["pub"]
-        frame = hex(len(pub))[2:].zfill(4)
-        frame += "".join([hex(ord(c))[2:].zfill(2) for c in  pub])
-        frame += hex(kwargs["messageID"])[2:].zfill(4) if qos else ""
+        frame = packHex(len(pub), 4)
+        frame += packHex(pub)
+        frame += packHex(kwargs["messageID"], 4) if qos else ""
         return frame
 
     def puback():
         # for qos == 1
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         return frame
 
     def pubrec():
         # for qos == 2
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         return frame
 
     def pubrel():
         # for qos == 2 and response to pubrec
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         return frame
 
     def pubcomp():
         # for qos == 2 and response to pubrel
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         return frame
 
     def subscribe():
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         # looks not cool
         for i in range(len(kwargs["sub"])):
-            frame += hex(len(kwargs["sub"][i]))[2:].zfill(4)
-            frame += "".join([hex(ord(c))[2:].zfill(2) for c in kwargs["sub"][i]])
-            frame += hex(kwargs["qosList"][i])[2:].zfill(2)
+            frame += packHex(len(kwargs["sub"][i]), 4)
+            frame += packHex(kwargs["sub"][i])
+            frame += packHex(kwargs["qosList"][i], 2)
         return frame
 
     def suback():
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         for q in kwargs["qosList"]:
-            frame += hex(q)[2:].zfill(2)
+            frame += packHex(q)
         return frame
 
     def unsubscribe():
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         for sub in kwargs["sub"]:
-            frame += hex(len(sub[0]))[2:].zfill(4)
-            frame += "".join([hex(ord(c))[2:].zfill(2) for c in sub])
+            frame += packHex(len(sub[0]), 4)
+            frame += "".join([packHex(c) for c in sub])
         return frame
 
     def unsuback():
         #response to unsubscribe
-        frame = hex(kwargs["messageID"])[2:].zfill(4)
+        frame = packHex(kwargs["messageID"], 4)
         return frame
 
     if t == TYPE.CONNECT:

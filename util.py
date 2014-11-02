@@ -10,3 +10,6 @@ def packHex(val, l = 2):
         return hex(ord(val))[2:].zfill(l)
     elif type(val) == int:
         return hex(val)[2:].zfill(l)
+
+def utfEncode(val):
+    return packHex(len(val), 4) + val

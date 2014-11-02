@@ -1,9 +1,10 @@
 from settings import *
 from binascii import hexlify, unhexlify
-from util import upackHex, packHex
+from util import upackHex, packHex, utfEncode
 
 willQoS = 3 #temporaly
 
+# TODO: this should be class, and each instance should has cliID, name, etc.. info. 
 def makeFrame(t, dup, qos, retain, **kwargs):
     data = ""
     def makeHeader(length):
@@ -16,7 +17,6 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         # this hard code is not cool
         frame = "0006"
         frame += packHex(CONNECT_PROTOCOL)
-#"".join([packHex(c) for c in CONNECT_PROTOCOL])
         frame += hex(PROTOCOL_VERSION)[2:].zfill(2)
         flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
         flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
@@ -26,11 +26,11 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         flag |= 1 << 1 if kwargs["clean"] else 0 << 1
         frame += packHex(flag)
         frame += packHex(KEEP_ALIVE, 4)
-        # connect seems not to use qos, but document write about qos used
-        frame += packHex(kwargs["cliID"]) if qos else ""
-        frame += "" #TODO: append depends on will
-        frame += packHex(kwargs["name"]) if kwargs.has_key("name") else ""
-        frame += packHex(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
+        frame += utfEncode(kwargs["cliID"]) if kwargs.has_key("cliID") else ""
+        frame += utfEncode(kwargs["willTopic"]) if kwargs.has_key("will") else ""
+        frame += utfEncode(kwargs["willMessage"]) if kwags.has_key("will") else ""
+        frame += utfEncode(kwargs["name"]) if kwargs.has_key("name") else ""
+        frame += utfEncode(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
 
         return frame
 
@@ -70,8 +70,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         frame = packHex(kwargs["messageID"], 4)
         # looks not cool
         for i in range(len(kwargs["sub"])):
-            frame += packHex(len(kwargs["sub"][i]), 4)
-            frame += packHex(kwargs["sub"][i])
+            frame += uftEncode(kwargs["sub"][i])
             frame += packHex(kwargs["qosList"][i], 2)
         return frame
 
@@ -84,8 +83,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def unsubscribe():
         frame = packHex(kwargs["messageID"], 4)
         for sub in kwargs["sub"]:
-            frame += packHex(len(sub[0]), 4)
-            frame += "".join([packHex(c) for c in sub])
+            frame += utfEncode(kwargs["sub"])
         return frame
 
     def unsuback():

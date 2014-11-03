@@ -12,4 +12,9 @@ def packHex(val, l = 2):
         return hex(val)[2:].zfill(l)
 
 def utfEncode(val):
-    return packHex(len(val), 4) + val
+    return packHex(len(val), 4) + packHex(val)
+
+def utfDecode(val):
+    idx = upackHex(val[:2])
+    content = val[2:2+idx]
+    return content, idx + 2

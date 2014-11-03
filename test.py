@@ -5,9 +5,10 @@ from binascii import hexlify, unhexlify
 
 frames = []
 
-frames.append(hexlify(makeFrame(TYPE.CONNECT, 1,1,1, name = "daiki", passwd = "10!", will = 1, clean = 1, cliID = "daiki-aminaka")))
+frames.append(hexlify(makeFrame(TYPE.CONNECT, 1,1,1, name = "daiki", passwd = "10!", will = 1,
+                                willTopic = "will/u", willMessage = "willwill", clean = 1, cliID = "daiki-aminaka")))
 frames.append(hexlify(makeFrame(TYPE.CONNACK, 1,1,1, code = CR.ACCEPTED)))
-frames.append(hexlify(makeFrame(TYPE.PUBLISH, 1,1,1, pub = "aiu", messageID = 15)))
+frames.append(hexlify(makeFrame(TYPE.PUBLISH, 1,1,1, topic = "a/u", message = "publishMesse", messageID = 15)))
 frames.append(hexlify(makeFrame(TYPE.PUBACK, 1,1,1, messageID = 15)))
 frames.append(hexlify(makeFrame(TYPE.PUBREC, 1,1,1, messageID = 15)))
 frames.append(hexlify(makeFrame(TYPE.PUBREL, 1,1,1, messageID = 15)))

@@ -1,6 +1,6 @@
 from settings import *
 from binascii import hexlify, unhexlify
-from util import upackHex, packHex, utfEncode
+from util import upackHex, packHex, utfEncode, utfDecode
 
 willQoS = 3 #temporaly
 
@@ -28,10 +28,9 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         frame += packHex(KEEP_ALIVE, 4)
         frame += utfEncode(kwargs["cliID"]) if kwargs.has_key("cliID") else ""
         frame += utfEncode(kwargs["willTopic"]) if kwargs.has_key("will") else ""
-        frame += utfEncode(kwargs["willMessage"]) if kwags.has_key("will") else ""
+        frame += utfEncode(kwargs["willMessage"]) if kwargs.has_key("will") else ""
         frame += utfEncode(kwargs["name"]) if kwargs.has_key("name") else ""
         frame += utfEncode(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
-
         return frame
 
     def connack():
@@ -40,10 +39,9 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         return frame
 
     def publish():
-        pub = kwargs["pub"]
-        frame = packHex(len(pub), 4)
-        frame += packHex(pub)
+        frame = utfEncode(kwargs["topic"])
         frame += packHex(kwargs["messageID"], 4) if qos else ""
+        frame += utfEncode(kwargs["message"]) if kwargs.has_key("message") else ""
         return frame
 
     def puback():
@@ -70,7 +68,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         frame = packHex(kwargs["messageID"], 4)
         # looks not cool
         for i in range(len(kwargs["sub"])):
-            frame += uftEncode(kwargs["sub"][i])
+            frame += utfEncode(kwargs["sub"][i])
             frame += packHex(kwargs["qosList"][i], 2)
         return frame
 
@@ -83,7 +81,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def unsubscribe():
         frame = packHex(kwargs["messageID"], 4)
         for sub in kwargs["sub"]:
-            frame += utfEncode(kwargs["sub"])
+            frame += utfEncode(sub)
         return frame
 
     def unsuback():
@@ -143,18 +141,24 @@ def parseFrame(data):
         flags = upackHex(data[9])
         keepAlive = upackHex(data[10:11])
 
-        # ? cliID = data[12:]
+        payLoadIdx = 12
+        cliId, idx = utfDecode(data[payLoadIdx:])
+        payLoadIdx += idx
 
         if flags & 0x80:
-            pass#name
+            name, idx = utfDecode(data[payLoadIdx:])
+            payLoadIdx += idx
         if flags & 0x40:
-            pass#passwd
+            passwd, idx = utfDecode(data[payLoadIdx:])
+            payLoadIdx += idx
         if flags & 0x04:
-            pass#willTopic
-            #willMessage
+            willTopic, idx = utfDecode(data[payLoadIdx:])
+            payLoadIdx += idx
+            willMessage, idx = utfDecode(data[payLoadIdx:])
+            payLoadIdx += idx
         if flags & 0x02:
-            pass
             # for clean session
+            pass
         #if flags & 0x01:
 
     def connack(data):
@@ -162,10 +166,10 @@ def parseFrame(data):
         code = data[1]
 
     def publish(data):
-        topicLen = upackHex(data[:2])
-        topic = data[2:2+topicLen]
+        topic, topicLen = utfDecode(data)
+        topicLen -= 2
         messageID = upackHex(data[2+topicLen:4+topicLen])
-        pubData = data[4+topicLen:] if len(data[4+topicLen:]) else "" # correct?
+        pubData, _ = utfDecode(data[4+topicLen:]) if len(data[4+topicLen:]) else "" # correct?
         if qos == 1:
             pass # send puback
         elif qos == 2:
@@ -191,8 +195,8 @@ def parseFrame(data):
         messageID = upackHex(data[:2])
         data = data[2:]
         while data:
-            topicLen = upackHex(data[:2])
-            topic = data[2:2+topicLen]
+            topic, topicLen = utfDecode(data)
+            topicLen -= 2
             reqQos = upackHex(data[2+topicLen])
             # do something
             data = data[3+topicLen:]
@@ -210,8 +214,8 @@ def parseFrame(data):
         messageID = upackHex(data[:2])
         data = data[2:]
         while data:
-            topicLen = upackHex(data[:2])
-            topic = data[2:2+topicLen]
+            topic, topicLen = utfDecode(data)
+            topicLen -= 2
             # do something
             data = data[2+topicLen:]
         # send unsuback

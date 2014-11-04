@@ -67,9 +67,9 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     def subscribe():
         frame = packHex(kwargs["messageID"], 4)
         # looks not cool
-        for i in range(len(kwargs["sub"])):
-            frame += utfEncode(kwargs["sub"][i])
-            frame += packHex(kwargs["qosList"][i], 2)
+        for topic in kwargs["topics"]:
+            frame += utfEncode(topic[0])
+            frame += packHex(topic[1], 2)
         return frame
 
     def suback():
@@ -80,7 +80,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
 
     def unsubscribe():
         frame = packHex(kwargs["messageID"], 4)
-        for sub in kwargs["sub"]:
+        for sub in kwargs["topics"]:
             frame += utfEncode(sub)
         return frame
 

@@ -1,6 +1,8 @@
 import frame as fm
 import socket
 from setting import TYPE
+from threading import Thread
+from time
 
 class Edge(object):
     def __init__(self, host, port):
@@ -8,21 +10,34 @@ class Edge(object):
         self.host = host
         self.port = port
         self.cleanSession = 0
+        self.keepAlive = None
+        self.connection = False
 
     def send(self, frame):
         self.sock.send(frame)
 
-    def connect(self, name = "", passwd = "", will = "", willTopic = "", willMessage = "", clean = 0, cliId = ""):
+    def connect(self, name = "", passwd = "", will = "", willTopic = "", willMessage = "", clean = 0, cliId = "", keepAlive = 5):
         # TODO: above default value should be considered
         self.cleanSession = clean
         self.sock.create_connection((self.host, self.port), 5)
+        self.connection = True
         frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name, passwd, will, willTopic, willMessage, clean, cliId)
         self.sock.send(frame)
+        self.keepAlive = Thread(target=self.__pingreq, args = (keepAlive,))
+        self.keepAlive.start()
 
     def disconnect(self, name):
         frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.sock.send(frame)
+        self.connection = False
         
+    def __pingreq(self, sleep):
+        while self.connection:
+            time.sleep(sleep)
+            frame = fm.makeFrame(TYPE.PINGREQ, 0,0,0)
+            self.send(frame)
+            # recv pingresp
+
 class Publisher(Edge):
     def __init__(self, host, port):
         super(Publisher, self).__init__(host, port)
@@ -57,9 +72,3 @@ class Client(Edge):
         frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics)
         self.send(frame)
         # recv unsuback
-
-    def __pingreq(self):
-        # Should this be sent automatically ?
-        frame = fm.makeFrame(TYPE.PINGREQ, 0,0,0)
-        self.send(frame)
-        # recv pingresp

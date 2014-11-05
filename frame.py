@@ -123,7 +123,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
     data = unhexlify(data)
     return makeHeader(len(data)) + data
 
-def parseFrame(data):
+def parseFrame(data, receiver):
     def parseHeader(header):
         byte1 = upackHex(header[0])
         t = unhexlify(hex((byte1 & 0xf0) >> 4)[2:].zfill(2))
@@ -144,20 +144,19 @@ def parseFrame(data):
         cliId, idx = utfDecode(data[payLoadIdx:])
         payLoadIdx += idx
 
-        if flags & 0x80:
-            name, idx = utfDecode(data[payLoadIdx:])
-            payLoadIdx += idx
-        if flags & 0x40:
-            passwd, idx = utfDecode(data[payLoadIdx:])
-            payLoadIdx += idx
-        if flags & 0x04:
-            willTopic, idx = utfDecode(data[payLoadIdx:])
-            payLoadIdx += idx
-            willMessage, idx = utfDecode(data[payLoadIdx:])
-            payLoadIdx += idx
+        name, idx = utfDecode(data[payLoadIdx:]) if flags & 0x80 else ("", 0)
+        payLoadIdx += idx
+        passwd, idx = utfDecode(data[payLoadIdx:]) if flags & 0x40 else ("", 0)
+        payLoadIdx += idx
+        willTopic, idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
+        payLoadIdx += idx
+        willMessage, idx = utfDecode(data[payLoadIdx:]) if willTopic else ("", 0)
+        payLoadIdx += idx
         if flags & 0x02:
             # for clean session
             pass
+
+        receiver.setClient(cliId, name, passwd, willTopic, willMessage, keepAlive)
 
         return payLoadIdx
 
@@ -175,6 +174,9 @@ def parseFrame(data):
             pass # send puback
         elif qos == 2:
             pass # send pucrec
+
+        if isinstance(receiver, Broker):
+            receiver.publish(topic, pubData)
 
         return 2 + topicLen + pubLen
 
@@ -206,6 +208,8 @@ def parseFrame(data):
             topic, topicLen = utfDecode(data[c:])
             reqQoS = upackHex(data[c+topicLen])
             c += topicLen + 1
+
+        # set topic to broker, but how can I identify the user and topic?
         return c
         # publish may be sent
         # send suback
@@ -223,6 +227,7 @@ def parseFrame(data):
         messageID = upackHex(data[:c])
         while data[c:]:
             # do something
+            # TODO: this might cause error
             topic, topicLen = utfDecode(data[c:])
             c += topicLen + 1
         return c

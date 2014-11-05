@@ -135,13 +135,12 @@ def parseFrame(data):
 
     def connect(data):
         # TODO: client object should be made to save these flags
-        ptoroLen = upackHex(data[:2])
-        proto = data[2:8]
-        protoVersion = upackHex(data[8])
-        flags = upackHex(data[9])
-        keepAlive = upackHex(data[10:11])
+        proto, protoLen = utfDecode(data)
+        protoVersion = upackHex(data[protoLen])
+        flags = upackHex(data[protoLen + 1])
+        keepAlive = upackHex(data[protoLen + 2:protoLen + 4])
 
-        payLoadIdx = 12
+        payLoadIdx = protoLen + 4
         cliId, idx = utfDecode(data[payLoadIdx:])
         payLoadIdx += idx
 
@@ -159,115 +158,129 @@ def parseFrame(data):
         if flags & 0x02:
             # for clean session
             pass
-        #if flags & 0x01:
+
+        return payLoadIdx
 
     def connack(data):
         topicCompress = data[0]
         code = data[1]
 
+        return  2
+
     def publish(data):
         topic, topicLen = utfDecode(data)
-        topicLen -= 2
-        messageID = upackHex(data[2+topicLen:4+topicLen])
-        pubData, _ = utfDecode(data[4+topicLen:]) if len(data[4+topicLen:]) else "" # correct?
+        messageID = upackHex(data[topicLen:2+topicLen])
+        pubData, pubLen = utfDecode(data[2+topicLen:]) if len(data[2+topicLen:]) else "" # correct?
         if qos == 1:
             pass # send puback
         elif qos == 2:
             pass # send pucrec
 
+        return 2 + topicLen + pubLen
+
     def puback(data):
         messageID = upackHex(data[:2])
         # delete message ?
+        return 2
 
     def pubrec(data):
         messageID = upackHex(data[:2])
         # send pubrel
+        return 2
 
     def pubrel(data):
         messageID = upackHex(data[:2])
         # send pubcomp
+        return 2
 
     def pubcomp(data):
         messageID = upackHex(data[:2])
         # delete message ?
+        return 2
 
     def subscribe(data):
-        messageID = upackHex(data[:2])
-        data = data[2:]
-        while data:
-            topic, topicLen = utfDecode(data)
-            topicLen -= 2
-            reqQos = upackHex(data[2+topicLen])
+        c = 2
+        messageID = upackHex(data[:c])
+        while data[c:]:
             # do something
-            data = data[3+topicLen:]
-
+            topic, topicLen = utfDecode(data[c:])
+            reqQoS = upackHex(data[c+topicLen])
+            c += topicLen + 1
+        return c
         # publish may be sent
         # send suback
 
     def suback(data):
-        messageID = upackHex(data[:2])
+        c = 2
+        messageID = upackHex(data[:c])
         for q in data[2:]:
             allowedQoS = upackHex(q)
-            pass # do something
+            c += 1
+        return c
 
     def unsubscribe(data):
-        messageID = upackHex(data[:2])
-        data = data[2:]
-        while data:
-            topic, topicLen = utfDecode(data)
-            topicLen -= 2
+        c = 2
+        messageID = upackHex(data[:c])
+        while data[c:]:
             # do something
-            data = data[2+topicLen:]
+            topic, topicLen = utfDecode(data[c:])
+            c += topicLen + 1
+        return c
         # send unsuback
 
     def unsuback(data):
-        messageID = upackHex(data[:2])
+        c = 2
+        messageID = upackHex(data[:c])
+        return c
 
     def pingreq(data):
-        pass
+        return 0
         # send pingresp
 
     def pingresp(data):
-        pass
+        return 0
 
     def disconnect(data):
+        return 0
         # do something based on clean session info
         # disconnect TCP
-        pass
 
-    t, dup, qos, retain, length, idx = parseHeader(data[:2])
-    data = data[1+idx:]
+    idx = 0
+    while data[idx:]:
+        print idx, len(data), hexlify(data[idx:idx+2])
+        t, dup, qos, retain, length, i = parseHeader(data[idx:idx+2])
+        idx += i + 1
+        if t == TYPE.CONNECT:
+            idx += connect(data[idx:])
+        elif t == TYPE.CONNACK:
+            idx += connack(data[idx:])
+        elif t == TYPE.PUBLISH:
+            idx += publish(data[idx:])
+        elif t == TYPE.PUBACK:
+            idx += puback(data[idx:])
+        elif t == TYPE.PUBREC:
+            idx += pubrec(data[idx:])
+        elif t == TYPE.PUBREL:
+            idx += pubrel(data[idx:])
+        elif t == TYPE.PUBCOMP:
+            idx += pubcomp(data[idx:])
+        elif t == TYPE.SUBSCRIBE:
+            idx += subscribe(data[idx:])
+        elif t == TYPE.SUBACK:
+            idx += suback(data[idx:])
+        elif t == TYPE.UNSUBSCRIBE:
+            idx += unsubscribe(data[idx:])
+        elif t == TYPE.UNSUBACK:
+            idx += unsuback(data[idx:])
+        elif t == TYPE.PINGREQ:
+            idx += pingreq(data[idx:])
+        elif t == TYPE.PINGRESP:
+            idx += pingresp(data[idx:])
+        elif t == TYPE.DISCONNECT:
+            idx += disconnect(data[idx:])
+        else:
+            print("undefined type")
 
-    if t == TYPE.CONNECT:
-        connect(data)
-    elif t == TYPE.CONNACK:
-        connack(data)
-    elif t == TYPE.PUBLISH:
-         publish(data)
-    elif t == TYPE.PUBACK:
-         puback(data)
-    elif t == TYPE.PUBREC:
-         pubrec(data)
-    elif t == TYPE.PUBREL:
-         pubrel(data)
-    elif t == TYPE.PUBCOMP:
-         pubcomp(data)
-    elif t == TYPE.SUBSCRIBE:
-         subscribe(data)
-    elif t == TYPE.SUBACK:
-         suback(data)
-    elif t == TYPE.UNSUBSCRIBE:
-         unsubscribe(data)
-    elif t == TYPE.UNSUBACK:
-         unsuback(data)
-    elif t == TYPE.PINGREQ:
-        pingreq(data)
-    elif t == TYPE.PINGRESP:
-         pingresp(data)
-    elif t == TYPE.DISCONNECT:
-         disconnect(data)
-    else:
-        print("undefined type")
 
 def encodeRestLen(X):
     output = []

@@ -143,14 +143,13 @@ def parseFrame(data, receiver):
         payLoadIdx = protoLen + 4
         cliId, idx = utfDecode(data[payLoadIdx:])
         payLoadIdx += idx
-
+        willTopic, idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
+        payLoadIdx += idx
+        willMessage, idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
+        payLoadIdx += idx
         name, idx = utfDecode(data[payLoadIdx:]) if flags & 0x80 else ("", 0)
         payLoadIdx += idx
         passwd, idx = utfDecode(data[payLoadIdx:]) if flags & 0x40 else ("", 0)
-        payLoadIdx += idx
-        willTopic, idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
-        payLoadIdx += idx
-        willMessage, idx = utfDecode(data[payLoadIdx:]) if willTopic else ("", 0)
         payLoadIdx += idx
         if flags & 0x02:
             # for clean session
@@ -239,20 +238,20 @@ def parseFrame(data, receiver):
         return c
 
     def pingreq(data):
+        receiver.pingresp()
         return 0
-        # send pingresp
 
     def pingresp(data):
         return 0
 
     def disconnect(data):
+        receiver.disconnect()
         return 0
         # do something based on clean session info
         # disconnect TCP
 
     idx = 0
     while data[idx:]:
-        print idx, len(data), hexlify(data[idx:idx+2])
         t, dup, qos, retain, length, i = parseHeader(data[idx:idx+2])
         idx += i + 1
         if t == TYPE.CONNECT:

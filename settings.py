@@ -1,7 +1,6 @@
 
 PROTOCOL_VERSION = 3
 CONNECT_PROTOCOL = "MQIsdp"
-KEEP_ALIVE = 10
 
 class TYPE():
     R_0 = "\x00"

@@ -25,7 +25,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         flag |= 1 << 2 if kwargs["will"] else 0 << 2
         flag |= 1 << 1 if kwargs["clean"] else 0 << 1
         frame += packHex(flag)
-        frame += packHex(KEEP_ALIVE, 4)
+        frame += packHex(kwargs["keepAlive"], 4)
         frame += utfEncode(kwargs["cliID"]) if kwargs.has_key("cliID") else ""
         frame += utfEncode(kwargs["willTopic"]) if kwargs.has_key("will") else ""
         frame += utfEncode(kwargs["willMessage"]) if kwargs.has_key("will") else ""

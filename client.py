@@ -16,13 +16,18 @@ class Edge(object):
     def send(self, frame):
         self.sock.send(frame)
 
+    def recv(self, size = 1024):
+        data = self.sock.recv(size)
+        fm.parseFrame(data, self)
+
     def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, cliID = "", keepAlive = 5):
         # TODO: above default value should be considered
         self.cleanSession = clean
         self.sock.connect((self.host, self.port))
         self.connection = True
-        frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd, will = will,
-                             willTopic = willTopic, willMessage = willMessage, clean = clean, cliID = cliID)
+        frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
+                             will = will, willTopic = willTopic, willMessage = willMessage,
+                             clean = clean, cliID = cliID, keepAlive = keepAlive)
         self.sock.send(frame)
         self.pingThread = Thread(target=self.__pingreq, args = (keepAlive,))
         self.pingThread.start()
@@ -32,12 +37,21 @@ class Edge(object):
         self.sock.send(frame)
         self.connection = False
         
+    def waitResponse(self, limit):
+        self.block = True
+        time.sleep(limit)
+        if self.block:
+            print "disconnect" # appropriate process here
+
     def __pingreq(self, sleep):
         while self.connection:
+            # Q: continuously send req? or send after receiving resp?
             time.sleep(sleep)
-            frame = fm.makeFrame(TYPE.PINGREQ, 0,0,0)
-            self.send(frame)
-            # recv pingresp
+            self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
+            Thread(target=self.waitResponse, args = (sleep,)).start()
+            self.recv()
+            self.block = False # if the data is pingresp
+
 
 class Publisher(Edge):
     def __init__(self, host, port):

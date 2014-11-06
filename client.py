@@ -1,8 +1,8 @@
 import frame as fm
 import socket
-from setting import TYPE
+from settings import TYPE
 from threading import Thread
-from time
+import time
 
 class Edge(object):
     def __init__(self, host, port):
@@ -10,21 +10,22 @@ class Edge(object):
         self.host = host
         self.port = port
         self.cleanSession = 0
-        self.keepAlive = None
+        self.pingThread = None
         self.connection = False
 
     def send(self, frame):
         self.sock.send(frame)
 
-    def connect(self, name = "", passwd = "", will = "", willTopic = "", willMessage = "", clean = 0, cliId = "", keepAlive = 5):
+    def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, cliID = "", keepAlive = 5):
         # TODO: above default value should be considered
         self.cleanSession = clean
-        self.sock.create_connection((self.host, self.port), 5)
+        self.sock.connect((self.host, self.port))
         self.connection = True
-        frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name, passwd, will, willTopic, willMessage, clean, cliId)
+        frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd, will = will,
+                             willTopic = willTopic, willMessage = willMessage, clean = clean, cliID = cliID)
         self.sock.send(frame)
-        self.keepAlive = Thread(target=self.__pingreq, args = (keepAlive,))
-        self.keepAlive.start()
+        self.pingThread = Thread(target=self.__pingreq, args = (keepAlive,))
+        self.pingThread.start()
 
     def disconnect(self, name):
         frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)

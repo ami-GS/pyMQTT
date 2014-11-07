@@ -1,7 +1,7 @@
 import frame as fm
 import socket
 from settings import TYPE
-from threading import Thread
+from threading import Thread, Timer
 import time
 
 class Edge(object):
@@ -32,25 +32,22 @@ class Edge(object):
         self.pingThread = Thread(target=self.__pingreq, args = (keepAlive,))
         self.pingThread.start()
 
-    def disconnect(self, name):
+    def disconnect(self):
         frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.sock.send(frame)
         self.connection = False
+        print "disconnect"
         
-    def waitResponse(self, limit):
-        self.block = True
-        time.sleep(limit)
-        if self.block:
-            print "disconnect" # appropriate process here
-
     def __pingreq(self, sleep):
+        self.timer = Timer(sleep, self.disconnect)
         while self.connection:
             # Q: continuously send req? or send after receiving resp?
             time.sleep(sleep)
             self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
-            Thread(target=self.waitResponse, args = (sleep,)).start()
+            self.timer.start()
             self.recv()
-            self.block = False # if the data is pingresp
+            self.timer.cancel() # TODO: if the recv is ping req
+            self.timer = Timer(sleep, self.disconnect)
 
 
 class Publisher(Edge):

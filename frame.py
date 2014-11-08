@@ -173,7 +173,7 @@ def parseFrame(data, receiver):
             pass # send pucrec
 
         if isinstance(receiver, Broker):
-            receiver.publish(topic, pubData)
+            receiver.publish(topic, pubData, messageID)
 
         return 2 + topicLen + pubLen
 

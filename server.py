@@ -73,9 +73,12 @@ class Broker():
         frame = fm.makeFrame(TYPE.PINGRESP, 0, 0, 0)
         self.send(frame)
 
-    def publish(self, topic, message):
-        #search client which waiting the topic ?
-        pass
+    def publish(self, topic, message, messageID = 0):
+        if self.topics.has_key(topic):
+            for client in self.topics[topic]:
+                frame = fm.makeFrame(TYPE.PUBLISH, 0, client[1], 0, topic = topic,
+                                     message = message, messageID = messageID)
+                self.clients[client[0]]["socket"].send(frame) # TODO: send function should be unified
 
     def send(self, frame):
         self.clients[self.addr]["socket"].send(frame)

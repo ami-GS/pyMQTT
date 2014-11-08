@@ -221,7 +221,6 @@ def parseFrame(data, receiver):
         c = 2
         messageID = upackHex(data[:c])
         while data[c:]:
-            # TODO: this might cause error, might use restLen
             topic, topicLen = utfDecode(data[c:])
             receiver.unsetTopic(topic)
             c += topicLen + 1
@@ -247,37 +246,38 @@ def parseFrame(data, receiver):
         # disconnect TCP
 
     idx = 0
-    while data[idx:]:
+    length = 0
+    while data[idx+length:]:
         t, dup, qos, retain, length, i = parseHeader(data[idx:idx+2])
         idx += i + 1
         if t == TYPE.CONNECT:
-            idx += connect(data[idx:])
+            idx += connect(data[idx:idx+length])
         elif t == TYPE.CONNACK:
-            idx += connack(data[idx:])
+            idx += connack(data[idx:idx+length])
         elif t == TYPE.PUBLISH:
-            idx += publish(data[idx:])
+            idx += publish(data[idx:idx+length])
         elif t == TYPE.PUBACK:
-            idx += puback(data[idx:])
+            idx += puback(data[idx:idx+length])
         elif t == TYPE.PUBREC:
-            idx += pubrec(data[idx:])
+            idx += pubrec(data[idx:idx+length])
         elif t == TYPE.PUBREL:
-            idx += pubrel(data[idx:])
+            idx += pubrel(data[idx:idx+length])
         elif t == TYPE.PUBCOMP:
-            idx += pubcomp(data[idx:])
+            idx += pubcomp(data[idx:idx+length])
         elif t == TYPE.SUBSCRIBE:
-            idx += subscribe(data[idx:])
+            idx += subscribe(data[idx:idx+length])
         elif t == TYPE.SUBACK:
-            idx += suback(data[idx:])
+            idx += suback(data[idx:idx+length])
         elif t == TYPE.UNSUBSCRIBE:
-            idx += unsubscribe(data[idx:])
+            idx += unsubscribe(data[idx:idx+length])
         elif t == TYPE.UNSUBACK:
-            idx += unsuback(data[idx:])
+            idx += unsuback(data[idx:idx+length])
         elif t == TYPE.PINGREQ:
-            idx += pingreq(data[idx:])
+            idx += pingreq(data[idx:idx+length])
         elif t == TYPE.PINGRESP:
-            idx += pingresp(data[idx:])
+            idx += pingresp(data[idx:idx+length])
         elif t == TYPE.DISCONNECT:
-            idx += disconnect(data[idx:])
+            idx += disconnect(data[idx:idx+length])
         else:
             print("undefined type")
 

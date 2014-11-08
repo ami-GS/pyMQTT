@@ -24,17 +24,19 @@ class Broker():
                 self.clients[self.addr]["timer"] = Timer(self.clients[self.addr]["keepAlive"]*1.5, self.disconnect)
                 self.clients[self.addr]["timer"].start()
 
-    def setClient(self, cliID, name, passwd, willTopic, willMessage, keepAlive):
+    def setClient(self, cliID, name, passwd, willTopic, willMessage, keepAlive, clean):
         self.clients[self.addr] = {"socket":self.sock, "cliID":cliID, "name":name, "passwd":passwd,
-                                   "willTopic":willTopic, "willMessage":willMessage,
-                                   "keepAlive":keepAlive, "timer":Timer(keepAlive*1.5, self.disconnect)}
+                                   "willTopic":willTopic, "willMessage":willMessage, "clean":clean,
+                                   "keepAlive":keepAlive, "timer":Timer(keepAlive*1.5, self.disconnect),
+                                   "subscribe":[]}
 
     def disconnect(self):
         frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         #self.clients[self.addr]["socket"].send(frame)
         self.send(frame)
         self.clients[self.addr]["socket"].close()
-        del self.clients[self.addr]
+        if self.clients[self.addr]["clean"]:
+            del self.clients[self.addr]
         print "disconnect"
 
     def connack(self):

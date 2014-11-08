@@ -151,11 +151,9 @@ def parseFrame(data, receiver):
         payLoadIdx += idx
         passwd, idx = utfDecode(data[payLoadIdx:]) if flags & 0x40 else ("", 0)
         payLoadIdx += idx
-        if flags & 0x02:
-            # for clean session
-            pass
+        clean = flags & 0x02
 
-        receiver.setClient(cliId, name, passwd, willTopic, willMessage, keepAlive)
+        receiver.setClient(cliId, name, passwd, willTopic, willMessage, keepAlive, clean)
 
         return payLoadIdx
 

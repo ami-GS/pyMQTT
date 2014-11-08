@@ -4,6 +4,8 @@ from settings import TYPE
 from threading import Thread, Timer
 import time
 
+# TODO: multi message sender should be implemented (now single)
+
 class Edge(object):
     def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,6 +31,7 @@ class Edge(object):
                              will = will, willTopic = willTopic, willMessage = willMessage,
                              clean = clean, cliID = cliID, keepAlive = keepAlive)
         self.sock.send(frame)
+        self.recv() #connack
         self.pingThread = Thread(target=self.__pingreq, args = (keepAlive,))
         self.pingThread.start()
 
@@ -49,18 +52,19 @@ class Edge(object):
             self.timer.cancel() # TODO: if the recv is ping req
             self.timer = Timer(sleep, self.disconnect)
 
+# TODO: should Publisher and Client be same?
 
 class Publisher(Edge):
     def __init__(self, host, port):
         super(Publisher, self).__init__(host, port)
 
-    def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = None):
-        if (qos == 1 or qos == 2) and messageID == None:
-            #error, here?
+    def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 0):
+        if (qos == 1 or qos == 2) and messageID == 0:
+            #error, here
             pass
         frame = fm.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
-        # recv something?
+        self.recv() # when QoS == 0 then none return. 1 then PUBACK, 2 then PUBREC
 
 class Client(Edge):
     def __init__(self, host, port):
@@ -75,7 +79,7 @@ class Client(Edge):
             qos = 1 # is this nice?
         frame = fm.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
-        # recv suback
+        self.recv()
 
     def unsubscribe(self, topics, dup = 0, qos = 0):
         # topics should be [topic1, topic2 ...]
@@ -83,4 +87,4 @@ class Client(Edge):
             qos = 1
         frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics)
         self.send(frame)
-        # recv unsuback
+        self.recv()

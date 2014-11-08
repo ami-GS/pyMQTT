@@ -66,7 +66,7 @@ class Client(Edge):
     def __init__(self, host, port):
         super(Client, self).__init__(host, port)
 
-    def subscribe(self, topics, dup = 0, qos = 0, messageID = None):
+    def subscribe(self, topics, dup = 0, qos = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]
         if qos == 0 and len(topics) >= 2:
             # error, when qos == 1, then len(topics) is allowed to be more than or equal to 2

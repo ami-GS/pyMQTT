@@ -11,6 +11,7 @@ class Broker():
         self.host = host
         self.port = port
         self.clients = {}
+        self.topics = {}
 
     def runServer(self):
         self.serv.listen(1)
@@ -30,14 +31,35 @@ class Broker():
                                    "keepAlive":keepAlive, "timer":Timer(keepAlive*1.5, self.disconnect),
                                    "subscribe":[]}
 
+    def setTopic(self, topicQoS):
+        self.clients[self.addr]["subscribe"].append(topicQoS)
+
+        if self.topics.has_key(topicQoS[0]):
+            self.topics[topicQoS[0]].append([self.addr, topicQoS[1]])
+        else:
+            self.topics[topicQoS[0]] = [[self.addr, topicQoS[1]]]
+
+    def unsetTopic(self, topic):
+        # not cool
+        self.clients["subscribe"].remove(self.clients["subscribe"][[t[0] for t in self.clients["subscribe"]].index(topic)])
+        self.topicQoS[topic].remove(self.topicQoS[[addr[0] for addr in self.TopicQoS[topic]].index(self.addr)])
+
     def disconnect(self):
         frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
-        #self.clients[self.addr]["socket"].send(frame)
         self.send(frame)
         self.clients[self.addr]["socket"].close()
         if self.clients[self.addr]["clean"]:
             del self.clients[self.addr]
         print "disconnect"
+
+    def suback(self, messageID):
+        frame = fm.makeFrame(TYPE.SUBACK, 0, 0, 0, messageID = messageID,
+                             qosList = [topic[1] for topic in self.clients[self.addr]["subscribe"]])
+        self.send(frame)
+
+    def unsuback(self, messageID):
+        frame = fm.makeFrame(TYPE.UNSUBACK, 0, 0, 0, messageID = messageID)
+        self.send(frame)
 
     def connack(self):
         frame = fm.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED)

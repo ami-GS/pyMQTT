@@ -201,15 +201,13 @@ def parseFrame(data, receiver):
         c = 2
         messageID = upackHex(data[:c])
         while data[c:]:
-            # do something
             topic, topicLen = utfDecode(data[c:])
             reqQoS = upackHex(data[c+topicLen])
+            receiver.setTopic([topic, reqQoS])
             c += topicLen + 1
-
-        # set topic to broker, but how can I identify the user and topic?
+        receiver.suback(messageID)
         return c
         # publish may be sent
-        # send suback
 
     def suback(data):
         c = 2
@@ -223,12 +221,12 @@ def parseFrame(data, receiver):
         c = 2
         messageID = upackHex(data[:c])
         while data[c:]:
-            # do something
-            # TODO: this might cause error
+            # TODO: this might cause error, might use restLen
             topic, topicLen = utfDecode(data[c:])
+            receiver.unsetTopic(topic)
             c += topicLen + 1
+        receiver.unsuback()
         return c
-        # send unsuback
 
     def unsuback(data):
         c = 2

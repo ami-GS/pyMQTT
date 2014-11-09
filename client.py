@@ -52,19 +52,33 @@ class Edge(object):
             self.timer.cancel() # TODO: if the recv is ping req
             self.timer = Timer(sleep, self.disconnect)
 
+    def pubcomp(self, messgeID = 1):
+        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
+        self.send(frame)
+
 # TODO: should Publisher and Client be same?
 
 class Publisher(Edge):
     def __init__(self, host, port):
         super(Publisher, self).__init__(host, port)
+        self.messages = {}
 
     def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 1):
         if (qos == 1 or qos == 2) and messageID == 0:
             #error, here
             pass
+        elif qos == 1:
+            # save the message until puback will come
+            self.messages[messageID] = [topic, message]
+            # recv puback
+            # remove the message
         frame = fm.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
         self.recv() # when QoS == 0 then none return. 1 then PUBACK, 2 then PUBREC
+
+    def pubrel(self, dup = 0, messageID = 1):
+        # dup should be zero ?
+        frame = fm.makeFrame(TYPE.PUBREL, dup, 1, 0, messageID = messageID)
 
 class Client(Edge):
     def __init__(self, host, port):
@@ -76,6 +90,7 @@ class Client(Edge):
             # error, when qos == 1, then len(topics) is allowed to be more than or equal to 2
             pass
         if len(topics) >= 2:
+            print("warning: QoS should be 1 if there are several topics")
             qos = 1 # is this nice?
         frame = fm.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
@@ -84,6 +99,7 @@ class Client(Edge):
     def unsubscribe(self, topics, dup = 0, qos = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
         if len(topics) >= 2:
+            print("warning: QoS should be 1 if there are several topics")
             qos = 1
         frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)

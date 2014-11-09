@@ -75,10 +75,20 @@ class Broker():
 
     def publish(self, topic, message, messageID = 1):
         if self.topics.has_key(topic):
+            self.messages[messageID] = [topic, message]
             for client in self.topics[topic]:
                 frame = fm.makeFrame(TYPE.PUBLISH, 0, client[1], 0, topic = topic,
                                      message = message, messageID = messageID)
                 self.clients[client[0]]["socket"].send(frame) # TODO: send function should be unified
+
+    def pubrel(self, dup = 0, messageID = 1):
+        # dup should be zero ?
+        frame = fm.makeFrame(TYPE.PUBREL, dup, 1, 0, messageID = messageID)
+        self.send(frame)
+
+    def pubcomp(self, messgeID = 1):
+        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
+        self.send(frame)
 
     def send(self, frame):
         self.clients[self.addr]["socket"].send(frame)

@@ -22,7 +22,7 @@ class Edge(object):
         data = self.sock.recv(size)
         fm.parseFrame(data, self)
 
-    def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, cliID = "", keepAlive = 5):
+    def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, cliID = "", keepAlive = 2):
         # TODO: above default value should be considered
         self.cleanSession = clean
         self.sock.connect((self.host, self.port))
@@ -58,7 +58,7 @@ class Publisher(Edge):
     def __init__(self, host, port):
         super(Publisher, self).__init__(host, port)
 
-    def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 0):
+    def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 1):
         if (qos == 1 or qos == 2) and messageID == 0:
             #error, here
             pass
@@ -81,10 +81,10 @@ class Client(Edge):
         self.send(frame)
         self.recv()
 
-    def unsubscribe(self, topics, dup = 0, qos = 0):
+    def unsubscribe(self, topics, dup = 0, qos = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
         if len(topics) >= 2:
             qos = 1
-        frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics)
+        frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
         self.recv()

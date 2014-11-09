@@ -73,7 +73,7 @@ class Broker():
         frame = fm.makeFrame(TYPE.PINGRESP, 0, 0, 0)
         self.send(frame)
 
-    def publish(self, topic, message, messageID = 0):
+    def publish(self, topic, message, messageID = 1):
         if self.topics.has_key(topic):
             for client in self.topics[topic]:
                 frame = fm.makeFrame(TYPE.PUBLISH, 0, client[1], 0, topic = topic,

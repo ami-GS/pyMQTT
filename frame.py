@@ -15,9 +15,8 @@ def makeFrame(t, dup, qos, retain, **kwargs):
 
     def connect():
         # this hard code is not cool
-        frame = "0006"
-        frame += packHex(CONNECT_PROTOCOL)
-        frame += hex(PROTOCOL_VERSION)[2:].zfill(2)
+        frame = utfEncode(CONNECT_PROTOCOL)
+        frame += packHex(PROTOCOL_VERSION, 2)
         flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
         flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
         flag |= 1 << 5 if kwargs["will"] else 0 << 5 # for future use
@@ -231,7 +230,6 @@ def parseFrame(data, receiver):
 
     while data:
         t, dup, qos, retain, length, idx = parseHeader(data)
-        print idx
         if t == TYPE.CONNECT:
             connect(data[idx:idx+length])
         elif t == TYPE.CONNACK:

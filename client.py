@@ -6,7 +6,7 @@ import time
 
 # TODO: multi message sender should be implemented (now single)
 
-class Edge(object):
+class Client():
     def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
@@ -14,6 +14,7 @@ class Edge(object):
         self.cleanSession = 0
         self.pingThread = None
         self.connection = False
+        self.messages = {}
 
     def send(self, frame):
         self.sock.send(frame)
@@ -40,28 +41,6 @@ class Edge(object):
         self.sock.send(frame)
         self.connection = False
         print "disconnect"
-        
-    def __pingreq(self, sleep):
-        self.timer = Timer(sleep, self.disconnect)
-        while self.connection:
-            # Q: continuously send req? or send after receiving resp?
-            time.sleep(sleep)
-            self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
-            self.timer.start()
-            self.recv()
-            self.timer.cancel() # TODO: if the recv is ping req
-            self.timer = Timer(sleep, self.disconnect)
-
-    def pubcomp(self, messgeID = 1):
-        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
-        self.send(frame)
-
-# TODO: should Publisher and Client be same?
-
-class Publisher(Edge):
-    def __init__(self, host, port):
-        super(Publisher, self).__init__(host, port)
-        self.messages = {}
 
     def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 1):
         if (qos == 1 or qos == 2) and messageID == 0:
@@ -80,9 +59,20 @@ class Publisher(Edge):
         # dup should be zero ?
         frame = fm.makeFrame(TYPE.PUBREL, dup, 1, 0, messageID = messageID)
 
-class Client(Edge):
-    def __init__(self, host, port):
-        super(Client, self).__init__(host, port)
+    def __pingreq(self, sleep):
+        self.timer = Timer(sleep, self.disconnect)
+        while self.connection:
+            # Q: continuously send req? or send after receiving resp?
+            time.sleep(sleep)
+            self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
+            self.timer.start()
+            self.recv()
+            self.timer.cancel() # TODO: if the recv is ping req
+            self.timer = Timer(sleep, self.disconnect)
+
+    def pubcomp(self, messgeID = 1):
+        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
+        self.send(frame)
 
     def subscribe(self, topics, dup = 0, qos = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]

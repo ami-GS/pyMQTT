@@ -86,19 +86,17 @@ class Client(Edge):
 
     def subscribe(self, topics, dup = 0, qos = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]
-        if qos == 0 and len(topics) >= 2:
-            # error, when qos == 1, then len(topics) is allowed to be more than or equal to 2
-            pass
-        if len(topics) >= 2:
+        if qos != 1 and len(topics) >= 2:
             print("warning: QoS should be 1 if there are several topics")
             qos = 1 # is this nice?
+            # error, when qos == 1, then len(topics) is allowed to be more than or equal to 2
         frame = fm.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
         self.recv()
 
     def unsubscribe(self, topics, dup = 0, qos = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
-        if len(topics) >= 2:
+        if qos != 1 and len(topics) >= 2:
             print("warning: QoS should be 1 if there are several topics")
             qos = 1
         frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)

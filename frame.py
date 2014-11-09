@@ -131,7 +131,7 @@ def parseFrame(data, receiver):
         qos = (byte1 & 0x06) >> 1
         retain = byte1 & 0x01
         restLen, idx = decodeRestLen([upackHex(x) for x in header[1:]])
-        return t, dub, qos, retain, restLen, idx
+        return t, dub, qos, retain, restLen, idx+1
 
     def connect(data):
         # TODO: client object should be made to save these flags
@@ -155,13 +155,9 @@ def parseFrame(data, receiver):
 
         receiver.setClient(cliId, name, passwd, willTopic, willMessage, keepAlive, clean)
 
-        return payLoadIdx
-
     def connack(data):
         topicCompress = data[0]
         code = data[1]
-
-        return  2
 
     def publish(data):
         topic, topicLen = utfDecode(data)
@@ -175,27 +171,21 @@ def parseFrame(data, receiver):
         if isinstance(receiver, Broker):
             receiver.publish(topic, pubData, messageID)
 
-        return 2 + topicLen + pubLen
-
     def puback(data):
         messageID = upackHex(data[:2])
         # delete message ?
-        return 2
 
     def pubrec(data):
         messageID = upackHex(data[:2])
         # send pubrel
-        return 2
 
     def pubrel(data):
         messageID = upackHex(data[:2])
         # send pubcomp
-        return 2
 
     def pubcomp(data):
         messageID = upackHex(data[:2])
         # delete message ?
-        return 2
 
     def subscribe(data):
         c = 2
@@ -206,7 +196,6 @@ def parseFrame(data, receiver):
             receiver.setTopic([topic, reqQoS])
             c += topicLen + 1
         receiver.suback(messageID)
-        return c
         # publish may be sent
 
     def suback(data):
@@ -215,7 +204,6 @@ def parseFrame(data, receiver):
         for q in data[2:]:
             allowedQoS = upackHex(q)
             c += 1
-        return c
 
     def unsubscribe(data):
         c = 2
@@ -225,62 +213,55 @@ def parseFrame(data, receiver):
             receiver.unsetTopic(topic)
             c += topicLen + 1
         receiver.unsuback()
-        return c
 
     def unsuback(data):
-        c = 2
-        messageID = upackHex(data[:c])
-        return c
+        messageID = upackHex(data[:2])
 
     def pingreq(data):
         receiver.pingresp()
-        return 0
 
     def pingresp(data):
-        return 0
+        pass
 
     def disconnect(data):
         receiver.disconnect()
-        return 0
         # do something based on clean session info
         # disconnect TCP
 
-    idx = 0
-    length = 0
-    while data[idx+length:]:
-        t, dup, qos, retain, length, i = parseHeader(data[idx:idx+2])
-        idx += i + 1
+    while data:
+        t, dup, qos, retain, length, idx = parseHeader(data)
+        print idx
         if t == TYPE.CONNECT:
-            idx += connect(data[idx:idx+length])
+            connect(data[idx:idx+length])
         elif t == TYPE.CONNACK:
-            idx += connack(data[idx:idx+length])
+            connack(data[idx:idx+length])
         elif t == TYPE.PUBLISH:
-            idx += publish(data[idx:idx+length])
+            publish(data[idx:idx+length])
         elif t == TYPE.PUBACK:
-            idx += puback(data[idx:idx+length])
+            puback(data[idx:idx+length])
         elif t == TYPE.PUBREC:
-            idx += pubrec(data[idx:idx+length])
+            pubrec(data[idx:idx+length])
         elif t == TYPE.PUBREL:
-            idx += pubrel(data[idx:idx+length])
+            pubrel(data[idx:idx+length])
         elif t == TYPE.PUBCOMP:
-            idx += pubcomp(data[idx:idx+length])
+            pubcomp(data[idx:idx+length])
         elif t == TYPE.SUBSCRIBE:
-            idx += subscribe(data[idx:idx+length])
+            subscribe(data[idx:idx+length])
         elif t == TYPE.SUBACK:
-            idx += suback(data[idx:idx+length])
+            suback(data[idx:idx+length])
         elif t == TYPE.UNSUBSCRIBE:
-            idx += unsubscribe(data[idx:idx+length])
+            unsubscribe(data[idx:idx+length])
         elif t == TYPE.UNSUBACK:
-            idx += unsuback(data[idx:idx+length])
+            unsuback(data[idx:idx+length])
         elif t == TYPE.PINGREQ:
-            idx += pingreq(data[idx:idx+length])
+            pingreq(data[idx:idx+length])
         elif t == TYPE.PINGRESP:
-            idx += pingresp(data[idx:idx+length])
+            pingresp(data[idx:idx+length])
         elif t == TYPE.DISCONNECT:
-            idx += disconnect(data[idx:idx+length])
+            disconnect(data[idx:idx+length])
         else:
             print("undefined type")
-
+        data = data[idx+length:]
 
 def encodeRestLen(X):
     output = []

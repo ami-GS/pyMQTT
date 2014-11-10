@@ -15,8 +15,8 @@ def makeFrame(t, dup, qos, retain, **kwargs):
 
     def connect():
         # this hard code is not cool
-        frame = utfEncode(CONNECT_PROTOCOL)
-        frame += packHex(PROTOCOL_VERSION, 2)
+        frame = utfEncode(SUPPORT_PROTOCOLS[0]) # temporaly using ver 3.1
+        frame += packHex(SUPPORT_PROTOCOL_VERSIONS[0])
         flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
         flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
         flag |= 1 << 5 if kwargs["will"] else 0 << 5 # for future use

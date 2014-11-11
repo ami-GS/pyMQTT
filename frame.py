@@ -30,6 +30,7 @@ def makeFrame(t, dup, qos, retain, **kwargs):
         frame += utfEncode(kwargs["willMessage"]) if kwargs.has_key("will") else ""
         frame += utfEncode(kwargs["name"]) if kwargs.has_key("name") else ""
         frame += utfEncode(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
+        # TODO: save these settings to server, if there is no cliID, then apply the ID from server
         return frame
 
     def connack():
@@ -153,6 +154,7 @@ def parseFrame(data, receiver):
         clean = flags & 0x02
 
         receiver.setClient(cliId, name, passwd, willTopic, willMessage, keepAlive, clean)
+        receiver.connack()
 
     def connack(data):
         topicCompress = data[0]
@@ -221,7 +223,7 @@ def parseFrame(data, receiver):
         receiver.pingresp()
 
     def pingresp(data):
-        pass
+        receiver.initTimer()
 
     def disconnect(data):
         receiver.disconnect()

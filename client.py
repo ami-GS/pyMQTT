@@ -59,6 +59,10 @@ class Client():
         # dup should be zero ?
         frame = fm.makeFrame(TYPE.PUBREL, dup, 1, 0, messageID = messageID)
 
+    def initTimer(self):
+        self.timer.cancel()
+        self.timer = Timer(sleep, self.disconnect)
+
     def __pingreq(self, sleep):
         self.timer = Timer(sleep, self.disconnect)
         while self.connection:
@@ -67,8 +71,6 @@ class Client():
             self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
             self.timer.start()
             self.recv()
-            self.timer.cancel() # TODO: if the recv is ping req
-            self.timer = Timer(sleep, self.disconnect)
 
     def pubcomp(self, messgeID = 1):
         frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)

@@ -169,7 +169,7 @@ def parseFrame(data, receiver):
             pass # send pucrec
 
         if isinstance(receiver, Broker):
-            receiver.publish(topic, pubData, messageID)
+            receiver.publish(topic, pubData, messageID, retain)
 
     def puback(data):
         messageID = upackHex(data[:2])
@@ -193,7 +193,7 @@ def parseFrame(data, receiver):
         while data[c:]:
             topic, topicLen = utfDecode(data[c:])
             reqQoS = upackHex(data[c+topicLen])
-            receiver.setTopic([topic, reqQoS])
+            receiver.setTopic([topic, reqQoS], messageID)
             c += topicLen + 1
         receiver.suback(messageID)
         # publish may be sent

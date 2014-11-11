@@ -12,6 +12,8 @@ class Broker():
         self.port = port
         self.clients = {}
         self.topics = {}
+        self.clientSubscribe = {}
+        # NOTICE: keys of topics and clientSubscribe should be synchronized
 
     def runServer(self):
         self.serv.listen(1)
@@ -31,13 +33,17 @@ class Broker():
                                    "keepAlive":keepAlive, "timer":Timer(keepAlive*1.5, self.disconnect),
                                    "subscribe":[]}
 
-    def setTopic(self, topicQoS):
+    def setTopic(self, topicQoS, messageID):
         self.clients[self.addr]["subscribe"].append(topicQoS)
 
-        if self.topics.has_key(topicQoS[0]):
-            self.topics[topicQoS[0]].append([self.addr, topicQoS[1]])
+        if self.clientSubscribe.has_key(topicQoS[0]):
+            self.clientSubscribe[topicQoS[0]].append([self.addr, topicQoS[1]])
+            if self.topics[topicQoS[0]]:
+                frame = fm.makeFrame(TYPE.PUBLISH, 0, topicOoS[1], 1, topic = topic,
+                                     message = self.[topicQoS[0]], messageID = messageID)
+                self.send(frame)
         else:
-            self.topics[topicQoS[0]] = [[self.addr, topicQoS[1]]]
+            self.clientSubscribe[topicQoS[0]] = [[self.addr, topicQoS[1]]]
 
     def unsetTopic(self, topic):
         # not cool
@@ -73,13 +79,17 @@ class Broker():
         frame = fm.makeFrame(TYPE.PINGRESP, 0, 0, 0)
         self.send(frame)
 
-    def publish(self, topic, message, messageID = 1):
+    def publish(self, topic, message, messageID = 1, retain = 0):
         if self.topics.has_key(topic):
-            self.messages[messageID] = [topic, message]
             for client in self.topics[topic]:
                 frame = fm.makeFrame(TYPE.PUBLISH, 0, client[1], 0, topic = topic,
                                      message = message, messageID = messageID)
                 self.clients[client[0]]["socket"].send(frame) # TODO: send function should be unified
+        else:
+            self.topics[topic] = ""
+
+        if retain:
+            self.topics[topic] = message
 
     def pubrel(self, dup = 0, messageID = 1):
         # dup should be zero ?

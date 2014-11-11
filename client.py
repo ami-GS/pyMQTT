@@ -55,9 +55,17 @@ class Client():
         self.send(frame)
         self.recv() # when QoS == 0 then none return. 1 then PUBACK, 2 then PUBREC
 
-    def pubrel(self, dup = 0, messageID = 1):
-        # dup should be zero ?
-        frame = fm.makeFrame(TYPE.PUBREL, dup, 1, 0, messageID = messageID)
+    def pubrec(self, messageID):
+        frame = fm.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID)
+        self.send(frame)
+
+    def pubrel(self, messageID):
+        frame = fm.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID)
+        self.send(frame)
+
+    def pubcomp(self, messageID):
+        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
+        self.send(frame)
 
     def initTimer(self):
         self.timer.cancel()

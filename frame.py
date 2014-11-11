@@ -166,9 +166,8 @@ def parseFrame(data, receiver):
         pubData, pubLen = utfDecode(data[2+topicLen:]) if len(data[2+topicLen:]) else "" # correct?
         if qos == 1:
             receiver.puback(messageID)
-            pass # send puback
         elif qos == 2:
-            pass # send pucrec
+            receiver.pubrec(messageID)
 
         if isinstance(receiver, Broker):
             receiver.publish(topic, pubData, messageID, retain)
@@ -179,11 +178,11 @@ def parseFrame(data, receiver):
 
     def pubrec(data):
         messageID = upackHex(data[:2])
-        # send pubrel
+        receiver.pubrel(messageID)
 
     def pubrel(data):
         messageID = upackHex(data[:2])
-        # send pubcomp
+        receiver.pubcomp(messageID)
 
     def pubcomp(data):
         messageID = upackHex(data[:2])

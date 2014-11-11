@@ -75,6 +75,18 @@ class Broker():
         frame = fm.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID)
         self.send(frame)
 
+    def pubrec(self, messageID):
+        frame = fm.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID)
+        self.send(frame)
+
+    def pubrel(self, messageID):
+        frame = fm.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID)
+        self.send(frame)
+
+    def pubcomp(self, messageID):
+        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
+        self.send(frame)
+
     def pingresp(self):
         frame = fm.makeFrame(TYPE.PINGRESP, 0, 0, 0)
         self.send(frame)

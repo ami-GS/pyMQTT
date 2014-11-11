@@ -40,7 +40,7 @@ class Broker():
             self.clientSubscribe[topicQoS[0]].append([self.addr, topicQoS[1]])
             if self.topics[topicQoS[0]]:
                 frame = fm.makeFrame(TYPE.PUBLISH, 0, topicOoS[1], 1, topic = topic,
-                                     message = self.[topicQoS[0]], messageID = messageID)
+                                     message = self.topics[topicQoS[0]], messageID = messageID)
                 self.send(frame)
         else:
             self.clientSubscribe[topicQoS[0]] = [[self.addr, topicQoS[1]]]

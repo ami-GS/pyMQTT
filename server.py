@@ -12,6 +12,7 @@ class Broker():
         self.port = port
         self.clients = {}
         self.topics = {}
+        self.wills = {}
         self.clientSubscribe = {}
         # NOTICE: keys of topics and clientSubscribe should be synchronized
 
@@ -33,6 +34,13 @@ class Broker():
                                    "keepAlive":keepAlive, "timer":Timer(keepAlive*1.5, self.disconnect),
                                    "subscribe":[]}
 
+    def setWill(self, topic, message, QoS, retain):
+        self.clients[self.addr]["subscribe"].append([topic, QoS])
+        self.wills[self.clients[self.addr]["cliID"]] = [topics, message, QoS, retain]
+
+    def unsetWill(self):
+        self.wills.pop([self.clients[self.addr]["cliID"]])
+
     def setTopic(self, topicQoS, messageID):
         self.clients[self.addr]["subscribe"].append(topicQoS)
 
@@ -51,11 +59,16 @@ class Broker():
         self.topicQoS[topic].remove(self.topicQoS[[addr[0] for addr in self.TopicQoS[topic]].index(self.addr)])
 
     def disconnect(self):
+        if self.wills.has_key(self.clients[self.addr]["cliID"]):
+            will = self.wills[self.clients[self.addr]["cliID"]]
+            frame = fm.makeFrame(TYPE.PUBLISH, 0, will[2], will[3],
+                                 topic = will[0], message = will[1], messageID = 1)
+            # TODO: send to ??
         frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.send(frame)
         self.clients[self.addr]["socket"].close()
         if self.clients[self.addr]["clean"]:
-            del self.clients[self.addr]
+            self.clients.pop(self.addr)
         print "disconnect"
 
     def suback(self, messageID):

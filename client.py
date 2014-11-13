@@ -15,6 +15,7 @@ class Client():
         self.pingThread = None
         self.connection = False
         self.messages = {}
+        self.keepAlive = 2
 
     def send(self, frame):
         self.sock.send(frame)
@@ -28,12 +29,13 @@ class Client():
         self.cleanSession = clean
         self.sock.connect((self.host, self.port))
         self.connection = True
+        self.keepAlive = keepAlive
         frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
                              will = will, willTopic = willTopic, willMessage = willMessage,
                              clean = clean, cliID = cliID, keepAlive = keepAlive)
         self.sock.send(frame)
         self.recv() #connack
-        self.pingThread = Thread(target=self.__pingreq, args = (keepAlive,))
+        self.pingThread = Thread(target=self.__pingreq)
         self.pingThread.start()
 
     def disconnect(self):
@@ -69,13 +71,13 @@ class Client():
 
     def initTimer(self):
         self.timer.cancel()
-        self.timer = Timer(sleep, self.disconnect)
+        self.timer = Timer(self.keepAlive, self.disconnect)
 
-    def __pingreq(self, sleep):
-        self.timer = Timer(sleep, self.disconnect)
+    def __pingreq(self):
+        self.timer = Timer(self.keepAlive, self.disconnect)
         while self.connection:
             # Q: continuously send req? or send after receiving resp?
-            time.sleep(sleep)
+            time.sleep(self.keepAlive)
             self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
             self.timer.start()
             self.recv()

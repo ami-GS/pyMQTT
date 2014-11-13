@@ -143,9 +143,10 @@ def parseFrame(data, receiver):
         payLoadIdx = protoLen + 4
         cliId, idx = utfDecode(data[payLoadIdx:])
         payLoadIdx += idx
-        willTopic, idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
+        will = {"QoS": (flags & 0x18) >> 3, "retain": (flags & 0x20) >> 5}
+        will["topic"], idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
         payLoadIdx += idx
-        willMessage, idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
+        will["message"], idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
         payLoadIdx += idx
         name, idx = utfDecode(data[payLoadIdx:]) if flags & 0x80 else ("", 0)
         payLoadIdx += idx
@@ -153,7 +154,7 @@ def parseFrame(data, receiver):
         payLoadIdx += idx
         clean = flags & 0x02
 
-        receiver.setClient(cliId, name, passwd, willTopic, willMessage, keepAlive, clean)
+        receiver.setClient(cliId, name, passwd, will, keepAlive, clean)
         receiver.connack()
 
     def connack(data):

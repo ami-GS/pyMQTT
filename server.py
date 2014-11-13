@@ -24,7 +24,8 @@ class Broker():
             while len(data):
                 data = self.sock.recv(1 << 16)
                 fm.parseFrame(data, self)
-                self.clients[self.addr].restartTimer() #when DISCONNECT frame coms, then error might occur because the socket is already closed
+                if self.clients.has_key(self.addr):
+                    self.clients[self.addr].restartTimer() #when DISCONNECT frame coms, then error might occur because the socket is already closed
 
     def setClient(self, cliID, name, passwd, will, keepAlive, clean):
         self.clients[self.addr] = Client(self, self.addr, self.sock, cliID,

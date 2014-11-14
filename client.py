@@ -55,7 +55,8 @@ class Client():
             # remove the message
         frame = fm.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
-        self.recv() # when QoS == 0 then none return. 1 then PUBACK, 2 then PUBREC
+        if 1 <= qos <= 2:
+            self.recv() # when QoS == 0 then none return. 1 then PUBACK, 2 then PUBREC
 
     def pubrec(self, messageID):
         frame = fm.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID)
@@ -64,6 +65,7 @@ class Client():
     def pubrel(self, messageID):
         frame = fm.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID)
         self.send(frame)
+        self.recv() # wait for pubcomp
 
     def pubcomp(self, messageID):
         frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
@@ -86,21 +88,24 @@ class Client():
         frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
         self.send(frame)
 
-    def subscribe(self, topics, dup = 0, qos = 0, messageID = 1):
+    def subscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]
-        if qos != 1 and len(topics) >= 2:
-            print("warning: QoS should be 1 if there are several topics")
-            qos = 1 # is this nice?
-            # error, when qos == 1, then len(topics) is allowed to be more than or equal to 2
+        if len(topics) >= 2:
+            qos = 1
+        elif len(topics) == 1:
+            qos = 0
+
         frame = fm.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
-        self.recv()
+        self.recv() # here should be suback
 
-    def unsubscribe(self, topics, dup = 0, qos = 0, messageID = 1):
+    def unsubscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
-        if qos != 1 and len(topics) >= 2:
-            print("warning: QoS should be 1 if there are several topics")
+        if len(topics) >= 2:
             qos = 1
+        elif len(topics) == 1:
+            qos = 0
+
         frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
-        self.recv()
+        self.recv() # wait for unsuback

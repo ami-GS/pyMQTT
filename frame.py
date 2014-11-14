@@ -1,6 +1,7 @@
 from settings import *
 from binascii import hexlify, unhexlify
 from util import upackHex, packHex, utfEncode, utfDecode
+import server
 
 willQoS = 3 #temporaly
 
@@ -170,7 +171,7 @@ def parseFrame(data, receiver):
         elif qos == 2:
             receiver.pubrec(messageID)
 
-        if isinstance(receiver, Broker):
+        if isinstance(receiver, server.Broker):
             receiver.publish(topic, pubData, messageID, retain)
 
     def puback(data):
@@ -213,8 +214,8 @@ def parseFrame(data, receiver):
         while data[c:]:
             topic, topicLen = utfDecode(data[c:])
             receiver.unsetTopic(topic)
-            c += topicLen + 1
-        receiver.unsuback()
+            c += topicLen
+        receiver.unsuback(messageID)
 
     def unsuback(data):
         messageID = upackHex(data[:2])

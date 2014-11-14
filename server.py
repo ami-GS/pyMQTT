@@ -36,8 +36,9 @@ class Broker():
 
         if self.clientSubscribe.has_key(topicQoS[0]):
             self.clientSubscribe[topicQoS[0]].append([self.addr, topicQoS[1]])
+            # this is 'retain'
             if self.topics[topicQoS[0]]:
-                frame = fm.makeFrame(TYPE.PUBLISH, 0, topicOoS[1], 1, topic = topic,
+                frame = fm.makeFrame(TYPE.PUBLISH, 0, topicOoS[1], 1, topic = topicQoS[0],
                                      message = self.topics[topicQoS[0]], messageID = messageID)
                 self.send(frame)
         else:
@@ -53,7 +54,7 @@ class Broker():
     def unsetTopic(self, topic):
         # not cool
         self.clients[self.addr].unsetTopic(topic)
-        self.topicQoS[topic].remove(self.topicQoS[[addr[0] for addr in self.TopicQoS[topic]].index(self.addr)])
+        self.clientSubscribe[topic].remove(self.clientSubscribe[topic][[addr[0] for addr in self.clientSubscribe[topic]].index(self.addr)])
 
     def disconnect(self):
         # when get DISCONNECT packet from client
@@ -113,7 +114,7 @@ class Broker():
         frame = fm.makeFrame(TYPE.PUBREL, dup, 1, 0, messageID = messageID)
         self.send(frame)
 
-    def pubcomp(self, messgeID = 1):
+    def pubcomp(self, messageID = 1):
         frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
         self.send(frame)
 

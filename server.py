@@ -136,7 +136,7 @@ class Client():
         self.keepAlive = keepAlive
         self.timer = Timer(keepAlive * 1.5, self.disconnect)
         self.subscribe = []
-        self.cleanSession = clean
+        self.clean = clean
 
     def sendWill(self, frame):
         self.server.sendWill(frame)

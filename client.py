@@ -3,14 +3,15 @@ import socket
 from settings import TYPE
 from threading import Thread, Timer
 import time
+from frame import Frame
 
 # TODO: multi message sender should be implemented (now single)
 
-class Client():
+class Client(Frame):
     def __init__(self, host, port):
+        super(Client, self).__init__()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.host = host
-        self.port = port
+        self.addr = (host, port)
         self.cleanSession = 0
         self.pingThread = None
         self.connection = False
@@ -21,26 +22,28 @@ class Client():
         self.sock.send(frame)
 
     def recv(self, size = 1024):
-        data = self.sock.recv(size)
-        fm.parseFrame(data, self)
+        while self.connection:
+            data = self.sock.recv(size)
+            self.parseFrame(data, self.sock, self.addr) # self.sock is needed??
 
     def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, cliID = "", keepAlive = 2):
         # TODO: above default value should be considered
         self.cleanSession = clean
-        self.sock.connect((self.host, self.port))
+        self.sock.connect(self.addr)
         self.connection = True
         self.keepAlive = keepAlive
-        frame = fm.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
+        frame = self.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
                              will = will, willTopic = willTopic, willMessage = willMessage,
                              clean = clean, cliID = cliID, keepAlive = keepAlive)
         self.sock.send(frame)
-        self.recv() #connack
+        self.recvThread = Thread(target=self.recv)
+        self.recvThread.start()
         self.pingThread = Thread(target=self.__pingreq)
         self.pingThread.start()
 
     def disconnect(self):
-        frame = fm.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
-        self.sock.send(frame)
+        frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
+        self.send(frame)
         self.connection = False
         print "disconnect"
 
@@ -53,22 +56,7 @@ class Client():
             self.messages[messageID] = [topic, message]
             # recv puback
             # remove the message
-        frame = fm.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
-        self.send(frame)
-        if 1 <= qos <= 2:
-            self.recv() # when QoS == 0 then none return. 1 then PUBACK, 2 then PUBREC
-
-    def pubrec(self, messageID):
-        frame = fm.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID)
-        self.send(frame)
-
-    def pubrel(self, messageID):
-        frame = fm.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID)
-        self.send(frame)
-        self.recv() # wait for pubcomp
-
-    def pubcomp(self, messageID):
-        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
+        frame = self.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
 
     def initTimer(self):
@@ -80,13 +68,8 @@ class Client():
         while self.connection:
             # Q: continuously send req? or send after receiving resp?
             time.sleep(self.keepAlive)
-            self.send(fm.makeFrame(TYPE.PINGREQ, 0,0,0))
+            self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
             self.timer.start()
-            self.recv()
-
-    def pubcomp(self, messgeID = 1):
-        frame = fm.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID)
-        self.send(frame)
 
     def subscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]
@@ -95,9 +78,8 @@ class Client():
         elif len(topics) == 1:
             qos = 0
 
-        frame = fm.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
+        frame = self.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
-        self.recv() # here should be suback
 
     def unsubscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
@@ -106,6 +88,5 @@ class Client():
         elif len(topics) == 1:
             qos = 0
 
-        frame = fm.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
+        frame = self.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
-        self.recv() # wait for unsuback

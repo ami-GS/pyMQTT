@@ -1,8 +1,8 @@
 import frame as fm
 from settings import ConnectReturn as CR
 from settings import TYPE
-import socket
-from threading import Timer
+import socket, select
+from threading import Timer, Thread
 
 class Broker():
     def __init__(self, host = "127.0.0.1", port = 8888):
@@ -16,16 +16,21 @@ class Broker():
         self.clientSubscribe = {}
         # NOTICE: keys of topics and clientSubscribe should be synchronized
 
+    def worker(self, con, addr):
+        while len(data):
+            data = con.recv(1 << 16)
+            fm.parseFrame(data, add, self)
+            if self.clients.has_key(addr):
+                self.clients[addr].restartTimer()
+
     def runServer(self):
         self.serv.listen(1)
+        threadNumber = 0
+        self.threads = []
         while True:
-            self.sock, self.addr = self.serv.accept()
-            data = "dummy"
-            while len(data):
-                data = self.sock.recv(1 << 16)
-                fm.parseFrame(data, self)
-                if self.clients.has_key(self.addr):
-                    self.clients[self.addr].restartTimer() #when DISCONNECT frame coms, then error might occur because the socket is already closed
+            con, addr = self.serv.accept()
+            thread = Thread(target = self.worker, args = (con, )
+            threadNum += 1
 
     def setClient(self, cliID, name, passwd, will, keepAlive, clean):
         self.clients[self.addr] = Client(self, self.addr, self.sock, cliID,

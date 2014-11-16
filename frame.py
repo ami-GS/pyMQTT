@@ -165,18 +165,21 @@ class Frame(object):
             code = data[1]
 
         def publish(data):
-            topic, topicLen = utfDecode(data)
-            messageID = upackHex(data[topicLen:2+topicLen])
-            pubData, pubLen = utfDecode(data[2+topicLen:]) if len(data[2+topicLen:]) else "" # correct?
+            topic, cursor = utfDecode(data)
+            messageID = 1
+            if 1 <= qos <= 2:
+                messageID = upackHex(data[cursor:2+cursor])
+                cursor += 2
+            pubData, pubLen = utfDecode(data[cursor:]) if len(data[cursor:]) else ("", 0) # correct?
+            cursor += pubLen
             if qos == 1:
                 con.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
             elif qos == 2:
                 con.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
 
-            #print self, "here"
-            #if isinstance(self, Broker):
-            # this should be called only if child class is Broker
-            self.publish(topic, pubData, messageID, retain)
+            if "server.Broker" in str(self):
+                # this should be called only if child class is Broker
+                self.publish(topic, pubData, messageID, retain)
 
         def puback(data):
             messageID = upackHex(data[:2])

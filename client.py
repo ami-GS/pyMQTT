@@ -69,6 +69,9 @@ class Client(Frame):
             # Q: continuously send req? or send after receiving resp?
             time.sleep(self.keepAlive)
             self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
+            # TODO: this cause socket error sometimes
+            if self.timer.is_alive():
+                break
             self.timer.start()
 
     def subscribe(self, topics, dup = 0, messageID = 1):

@@ -42,13 +42,14 @@ class Broker(Frame):
     def setTopic(self, addr, topicQoS, messageID):
         self.clients[addr].subscribe.append(topicQoS)
 
+        if self.topics.has_key(topicQoS[0]) and self.topics[topicQoS[0]]:
+            # this is 'retain'
+            frame = self.makeFrame(TYPE.PUBLISH, 0, topicQoS[1], 1, topic = topicQoS[0],
+                                   message = self.topics[topicQoS[0]], messageID = messageID)
+            self.clients[addr].sock.send(frame)
+
         if self.clientSubscribe.has_key(topicQoS[0]):
             self.clientSubscribe[topicQoS[0]].append([addr, topicQoS[1]])
-            # this is 'retain'
-            if self.topics[topicQoS[0]]:
-                frame = self.makeFrame(TYPE.PUBLISH, 0, topicOoS[1], 1, topic = topicQoS[0],
-                                     message = self.topics[topicQoS[0]], messageID = messageID)
-                self.clients[addr].sock.send(frame)
         else:
             self.clientSubscribe[topicQoS[0]] = [[addr, topicQoS[1]]]
 
@@ -106,10 +107,10 @@ class Client():
 
     def disconnect(self):
         # when ping packet didn't came within the keepAlive * 1.5 sec
-        frame = self.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
+        frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
                              topic = self.will["topic"], message = self.will["message"], messageID = 1)
         self.sendWill(frame)
-        frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
+        frame = self.server.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.send(frame)
         self.sock.close()
         self.server.clients.pop(self.addr)

@@ -46,7 +46,7 @@ class Broker(Frame):
             # this is 'retain'
             frame = self.makeFrame(TYPE.PUBLISH, 0, topicQoS[1], 1, topic = topicQoS[0],
                                    message = self.topics[topicQoS[0]], messageID = messageID)
-            self.clients[addr].sock.send(frame)
+            self.clients[addr].send(frame)
 
         if self.clientSubscribe.has_key(topicQoS[0]):
             self.clientSubscribe[topicQoS[0]].append([addr, topicQoS[1]])

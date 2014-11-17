@@ -110,10 +110,9 @@ class Client():
         frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
                              topic = self.will["topic"], message = self.will["message"], messageID = 1)
         self.sendWill(frame)
-        frame = self.server.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
-        self.send(frame)
         self.sock.close()
         self.server.clients.pop(self.addr)
+        print "disconnect"
 
     def unsetTopic(self, topic):
         self.subscribe.remove(self.subscribe[[t[0] for t in self.subscribe].index(topic)])

@@ -37,9 +37,9 @@ class Client(Frame):
                              clean = clean, cliID = cliID, keepAlive = keepAlive)
         self.sock.send(frame)
         self.recvThread = Thread(target=self.recv)
-        self.recvThread.setDaemon(True)
         self.recvThread.start()
-        self.__pingreq()
+        self.pingThread = Thread(target=self.__pingreq)
+        self.pingThread.start()
 
     def disconnect(self):
         frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)

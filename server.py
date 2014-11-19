@@ -18,12 +18,12 @@ class Broker(Frame):
         self.clientSubscribe = {}
         # NOTICE: keys of topics and clientSubscribe should be synchronized
 
-    def worker(self, con, addr):
-        while self.clients.has_key(addr):
-            data = con.recv(1 << 16)
-            self.parseFrame(data, con, addr)
-            if self.clients.has_key(addr):
-                self.clients[addr].restartTimer()
+    def worker(self, client):
+        while self.clients.has_key(client.addr):
+            data = client.recv(1 << 16)
+            self.parseFrame(data, client)
+            if self.clients.has_key(client.addr):
+                client.restartTimer()
 
     def runServer(self):
         self.serv.listen(1)
@@ -32,25 +32,25 @@ class Broker(Frame):
         while True:
             con, addr = self.serv.accept()
             self.clients[addr] = Client(self, addr, con)
-            thread = Thread(target = self.worker, args = (con, addr, ))
+            thread = Thread(target = self.worker, args = (self.clients[addr], ))
             thread.start()
 
-    def setClient(self, con, addr, cliID, name, passwd, will, keepAlive, clean):
-        self.clients[addr].setInfo(cliID, name, passwd, will, keepAlive, clean)
+    def setClient(self, client, cliID, name, passwd, will, keepAlive, clean):
+        client.setInfo(cliID, name, passwd, will, keepAlive, clean)
 
-    def setTopic(self, addr, topicQoS, messageID):
-        self.clients[addr].subscribe.append(topicQoS)
+    def setTopic(self, client, topicQoS, messageID):
+        client.subscribe.append(topicQoS)
 
         if self.topics.has_key(topicQoS[0]) and self.topics[topicQoS[0]]:
             # this is 'retain'
             frame = self.makeFrame(TYPE.PUBLISH, 0, topicQoS[1], 1, topic = topicQoS[0],
                                    message = self.topics[topicQoS[0]], messageID = messageID)
-            self.clients[addr].send(frame)
+            client.send(frame)
 
         if self.clientSubscribe.has_key(topicQoS[0]):
-            self.clientSubscribe[topicQoS[0]].append([addr, topicQoS[1]])
+            self.clientSubscribe[topicQoS[0]].append([client.addr, topicQoS[1]])
         else:
-            self.clientSubscribe[topicQoS[0]] = [[addr, topicQoS[1]]]
+            self.clientSubscribe[topicQoS[0]] = [[client.addr, topicQoS[1]]]
 
     def unsetWill(self):
         #when
@@ -59,18 +59,18 @@ class Broker(Frame):
     def sendWill(self, frame):
         pass # send willFrame to clients ?
 
-    def unsetTopic(self, addr, topic):
+    def unsetTopic(self, client, topic):
         # not cool
-        self.clients[addr].unsetTopic(topic)
-        self.clientSubscribe[topic].remove(self.clientSubscribe[topic][[a[0] for a in self.clientSubscribe[topic]].index(addr)])
+        client.unsetTopic(topic)
+        self.clientSubscribe[topic].remove(self.clientSubscribe[topic][[a[0] for a in self.clientSubscribe[topic]].index(client.addr)])
 
-    def disconnect(self, addr):
+    def disconnect(self, client):
         # when get DISCONNECT packet from client
-        self.clients[addr].sock.close()
-        self.clients[addr].timer.cancel()
-        if self.clients[addr].clean:
+        client.sock.close()
+        client.timer.cancel()
+        if client.clean:
             # TODO: correct ?
-            self.clients.pop(addr)
+            self.clients.pop(client.addr)
         print "disconnect"
 
     def publish(self, topic, message, messageID = 1, retain = 0):
@@ -117,6 +117,9 @@ class Client():
 
     def unsetTopic(self, topic):
         self.subscribe.remove(self.subscribe[[t[0] for t in self.subscribe].index(topic)])
+
+    def recv(self, num):
+        return self.sock.recv(num)
 
     def send(self, frame):
         self.sock.send(frame)

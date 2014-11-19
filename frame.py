@@ -126,7 +126,7 @@ class Frame(object):
         data = unhexlify(data)
         return makeHeader(len(data)) + data
 
-    def parseFrame(self, data, con, addr):
+    def parseFrame(self, data, client):
         def parseHeader(header):
             byte1 = upackHex(header[0])
             t = unhexlify(hex((byte1 & 0xf0) >> 4)[2:].zfill(2))
@@ -157,8 +157,8 @@ class Frame(object):
             payLoadIdx += idx
             clean = flags & 0x02
 
-            self.setClient(con, addr, cliId, name, passwd, will, keepAlive, clean)
-            con.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
+            self.setClient(client, cliId, name, passwd, will, keepAlive, clean)
+            client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
 
         def connack(data):
             topicCompress = data[0]
@@ -173,9 +173,9 @@ class Frame(object):
             pubData, pubLen = utfDecode(data[cursor:]) if len(data[cursor:]) else ("", 0) # correct?
             cursor += pubLen
             if qos == 1:
-                con.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
+                client.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
             elif qos == 2:
-                con.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
+                client.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
 
             if "server.Broker" in str(self):
                 # this should be called only if child class is Broker
@@ -187,11 +187,11 @@ class Frame(object):
 
         def pubrec(data):
             messageID = upackHex(data[:2])
-            con.send(self.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID))
+            client.send(self.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID))
 
         def pubrel(data):
             messageID = upackHex(data[:2])
-            con.send(self.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID))
+            client.send(self.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID))
 
         def pubcomp(data):
             messageID = upackHex(data[:2])
@@ -203,11 +203,11 @@ class Frame(object):
             while data[c:]:
                 topic, topicLen = utfDecode(data[c:])
                 reqQoS = upackHex(data[c+topicLen])
-                self.setTopic(addr, [topic, reqQoS], messageID)
+                self.setTopic(client, [topic, reqQoS], messageID)
                 c += topicLen + 1
             # this looks mistake, the qosList should contain only subscribed QoSs
-            con.send(self.makeFrame(TYPE.SUBACK, 0, 0, 0, messageID = messageID,
-                                 qosList = [topic[1] for topic in self.clients[addr].subscribe]))
+            client.send(self.makeFrame(TYPE.SUBACK, 0, 0, 0, messageID = messageID,
+                                 qosList = [topic[1] for topic in client.subscribe]))
             # publish may be sent
 
         def suback(data):
@@ -222,21 +222,21 @@ class Frame(object):
             messageID = upackHex(data[:c])
             while data[c:]:
                 topic, topicLen = utfDecode(data[c:])
-                self.unsetTopic(addr, topic)
+                self.unsetTopic(client, topic)
                 c += topicLen
-            con.send(self.makeFrame(TYPE.UNSUBACK, 0, 0, 0, messageID = messageID))
+            client.send(self.makeFrame(TYPE.UNSUBACK, 0, 0, 0, messageID = messageID))
 
         def unsuback(data):
             messageID = upackHex(data[:2])
 
         def pingreq(data):
-            con.send(self.makeFrame(TYPE.PINGRESP, 0, 0, 0))
+            client.send(self.makeFrame(TYPE.PINGRESP, 0, 0, 0))
 
         def pingresp(data):
             self.initTimer()
 
         def disconnect(data):
-            self.disconnect(addr)
+            self.disconnect(client)
             # do something based on clean session info
             # disconnect TCP
 

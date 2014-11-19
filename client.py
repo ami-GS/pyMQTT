@@ -24,7 +24,7 @@ class Client(Frame):
     def recv(self, size = 1024):
         while self.connection:
             data = self.sock.recv(size)
-            self.parseFrame(data, self.sock, self.addr) # self.sock is needed??
+            self.parseFrame(data, self)
 
     def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, cliID = "", keepAlive = 2):
         # TODO: above default value should be considered

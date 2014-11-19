@@ -45,6 +45,7 @@ class Client(Frame):
         frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.send(frame)
         self.connection = False
+        self.sock.close()
         print "disconnect"
 
     def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 1):
@@ -65,13 +66,12 @@ class Client(Frame):
 
     def __pingreq(self):
         self.timer = Timer(self.keepAlive, self.disconnect)
-        while self.connection:
+        while True:
             # Q: continuously send req? or send after receiving resp?
             time.sleep(self.keepAlive)
-            self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
-            # TODO: this cause socket error sometimes
-            if self.timer.is_alive():
+            if not self.connection:
                 break
+            self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
             self.timer.start()
 
     def subscribe(self, topics, dup = 0, messageID = 1):

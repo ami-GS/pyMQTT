@@ -19,8 +19,7 @@ class Broker(Frame):
         # NOTICE: keys of topics and clientSubscribe should be synchronized
 
     def worker(self, con, addr):
-        data = "dummy"
-        while len(data):
+        while self.clients.has_key(addr):
             data = con.recv(1 << 16)
             self.parseFrame(data, con, addr)
             if self.clients.has_key(addr):
@@ -32,12 +31,12 @@ class Broker(Frame):
         self.threads = []
         while True:
             con, addr = self.serv.accept()
+            self.clients[addr] = Client(self, addr, con)
             thread = Thread(target = self.worker, args = (con, addr, ))
             thread.start()
 
     def setClient(self, con, addr, cliID, name, passwd, will, keepAlive, clean):
-        self.clients[addr] = Client(self, addr, con, cliID, name,
-                                    passwd, will, keepAlive, clean)
+        self.clients[addr].setInfo(cliID, name, passwd, will, keepAlive, clean)
 
     def setTopic(self, addr, topicQoS, messageID):
         self.clients[addr].subscribe.append(topicQoS)
@@ -68,6 +67,7 @@ class Broker(Frame):
     def disconnect(self, addr):
         # when get DISCONNECT packet from client
         self.clients[addr].sock.close()
+        self.clients[addr].timer.cancel()
         if self.clients[addr].clean:
             # TODO: correct ?
             self.clients.pop(addr)
@@ -86,11 +86,12 @@ class Broker(Frame):
             self.topics[topic] = message
 
 class Client():
-    def __init__(self, server, addr, sock, cliID = "", name = "",
-                 passwd = "", will = {}, keepAlive = 2, clean = 1):
+    def __init__(self, server, addr, sock):
         self.server = server
         self.addr = addr
         self.sock = sock
+
+    def setInfo(self, cliID = "", name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
         if not cliID:
             cliID = "random" # TODO: cliID should be determined in here if no cliID was delivered.
         self.cliID = cliID

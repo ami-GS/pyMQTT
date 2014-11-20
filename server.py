@@ -16,15 +16,18 @@ class Broker(Frame):
         self.topics = {}
         self.wills = {}
         self.clientSubscribe = {}
+        self.clientIDs = []
         # NOTICE: keys of topics and clientSubscribe should be synchronized
         self.serv.listen(1)
 
     def worker(self, client):
-        while self.clients.has_key(client.addr):
+        while True:
             data = client.recv(1 << 16)
             self.parseFrame(data, client)
-            if self.clients.has_key(client.addr):
+            if client.connection:
                 client.restartTimer()
+            else:
+                break
 
     def runServer(self):
         while True:
@@ -35,6 +38,17 @@ class Broker(Frame):
             thread.start()
 
     def setClient(self, client, cliID, name, passwd, will, keepAlive, clean):
+        if not cliID:
+            cliID = "random" # TODO: cliID should be determined in here if no cliID was delivered.
+
+        if cliID in self.clientIDs:
+            #TODO: resume session here
+            if clean:
+                self.clientIDs.remove(cliID)
+
+        if not clean:
+            self.clientIDs.append(cliID)
+
         client.setInfo(cliID, name, passwd, will, keepAlive, clean)
 
     def setTopic(self, client, topicQoS, messageID):
@@ -65,11 +79,16 @@ class Broker(Frame):
 
     def disconnect(self, client):
         # when get DISCONNECT packet from client
+        client.connection = False
         client.sock.close()
         client.timer.cancel()
         if client.clean:
             # TODO: correct ?
+            for topic in client.subscribe:
+                topic
+                self.unsetTopic(client, topic)
             self.clients.pop(client.addr)
+
         print "disconnect"
 
     def publish(self, topic, message, messageID = 1, retain = 0):
@@ -90,10 +109,9 @@ class Client():
         self.server = server
         self.addr = addr
         self.sock = sock
+        self.connection = True
 
-    def setInfo(self, cliID = "", name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
-        if not cliID:
-            cliID = "random" # TODO: cliID should be determined in here if no cliID was delivered.
+    def setInfo(self, cliID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
         self.cliID = cliID
         self.name = name
         self.passwd = passwd
@@ -111,6 +129,7 @@ class Client():
         frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
                              topic = self.will["topic"], message = self.will["message"], messageID = 1)
         self.sendWill(frame)
+        self.connection = False
         self.sock.close()
         self.server.clients.pop(self.addr)
         print "disconnect"

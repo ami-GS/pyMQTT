@@ -17,6 +17,7 @@ class Broker(Frame):
         self.wills = {}
         self.clientSubscribe = {}
         # NOTICE: keys of topics and clientSubscribe should be synchronized
+        self.serv.listen(1)
 
     def worker(self, client):
         while self.clients.has_key(client.addr):
@@ -26,13 +27,11 @@ class Broker(Frame):
                 client.restartTimer()
 
     def runServer(self):
-        self.serv.listen(1)
-        threadNumber = 0
-        self.threads = []
         while True:
             con, addr = self.serv.accept()
             self.clients[addr] = Client(self, addr, con)
             thread = Thread(target = self.worker, args = (self.clients[addr], ))
+            #thread.setDaemon(True) # TODO: if this is daemon, error handling should be implemented in client side
             thread.start()
 
     def setClient(self, client, cliID, name, passwd, will, keepAlive, clean):

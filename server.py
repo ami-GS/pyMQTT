@@ -39,12 +39,12 @@ class Broker(Frame):
         client.setInfo(cliID, name, passwd, will, keepAlive, clean)
 
     def setTopic(self, client, topicQoS, messageID):
-        client.subscribe.append(topicQoS)
+        client.setTopic(topicQoS)
 
         if self.topics.has_key(topicQoS[0]) and self.topics[topicQoS[0]]:
             # this is 'retain'
             frame = self.makeFrame(TYPE.PUBLISH, 0, topicQoS[1], 1, topic = topicQoS[0],
-                                   message = self.topics[topicQoS[0]], messageID = messageID)
+                                message = self.topics[topicQoS[0]], messageID = messageID)
             client.send(frame)
 
         if self.clientSubscribe.has_key(topicQoS[0]):
@@ -74,16 +74,17 @@ class Broker(Frame):
         print "disconnect"
 
     def publish(self, topic, message, messageID = 1, retain = 0):
-        if self.topics.has_key(topic):
-            for client in self.topics[topic]:
+        if self.clientSubscribe.has_key(topic):
+            for client in self.clientSubscribe[topic]:
                 frame = self.makeFrame(TYPE.PUBLISH, 0, client[1], 0, topic = topic,
-                                     message = message, messageID = messageID)
-                self.clients[client[0]].send(frame) # TODO: send function should be unified
+                                       message = message, messageID = messageID)
+                self.clients[client[0]].send(frame)
         else:
+            self.clientSubscribe[topic] = []
             self.topics[topic] = ""
 
         if retain:
-            self.topics[topic] = message
+            self.topics[topic] = message #TODO: QoS shold also be saved
 
 class Client():
     def __init__(self, server, addr, sock):
@@ -114,6 +115,9 @@ class Client():
         self.sock.close()
         self.server.clients.pop(self.addr)
         print "disconnect"
+
+    def setTopic(self, topicQoS):
+        self.subscribe.append(topicQoS)
 
     def unsetTopic(self, topic):
         self.subscribe.remove(self.subscribe[[t[0] for t in self.subscribe].index(topic)])

@@ -42,11 +42,14 @@ class Client(Frame):
         self.pingThread.start()
 
     def disconnect(self):
+        if not self.connection:
+            print("connection has already closed")
+            return
+        self.connection = False
         frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.send(frame)
-        self.connection = False
         self.sock.close()
-        print "disconnect"
+        print("disconnect")
 
     def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 1):
         if (qos == 1 or qos == 2) and messageID == 0:
@@ -66,13 +69,11 @@ class Client(Frame):
 
     def __pingreq(self):
         self.timer = Timer(self.keepAlive, self.disconnect)
-        while True:
+        while self.connection:
             # Q: continuously send req? or send after receiving resp?
-            time.sleep(self.keepAlive)
-            if not self.connection:
-                break
             self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
             self.timer.start()
+            time.sleep(self.keepAlive)
 
     def subscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]

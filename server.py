@@ -85,11 +85,10 @@ class Broker(Frame):
         if client.clean:
             # TODO: correct ?
             for topic in client.subscribe:
-                topic
                 self.unsetTopic(client, topic)
             self.clients.pop(client.addr)
 
-        print "disconnect"
+        print("disconnect")
 
     def publish(self, topic, message, messageID = 1, retain = 0):
         if self.clientSubscribe.has_key(topic):
@@ -126,13 +125,13 @@ class Client():
 
     def disconnect(self):
         # when ping packet didn't came within the keepAlive * 1.5 sec
+        self.connection = False
         frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
                              topic = self.will["topic"], message = self.will["message"], messageID = 1)
         self.sendWill(frame)
-        self.connection = False
         self.sock.close()
         self.server.clients.pop(self.addr)
-        print "disconnect"
+        print("disconnect")
 
     def setTopic(self, topicQoS):
         self.subscribe.append(topicQoS)

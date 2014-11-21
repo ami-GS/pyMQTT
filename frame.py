@@ -158,7 +158,6 @@ class Frame(object):
             clean = flags & 0x02
 
             self.setClient(client, cliId, name, passwd, will, keepAlive, clean)
-            client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
 
         def connack(data):
             topicCompress = data[0]

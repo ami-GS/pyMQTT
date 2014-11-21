@@ -39,7 +39,11 @@ class Broker(Frame):
 
     def setClient(self, client, cliID, name, passwd, will, keepAlive, clean):
         if not cliID:
-            cliID = "random" # TODO: cliID should be determined in here if no cliID was delivered.
+            if not clean:
+                client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.R_ID_REJECTED))
+                client.disconnect()
+                return
+            cliID = "unknown" + str(len(self.clients)) # TODO: cliID should be determined in here if no cliID was delivered.
 
         if cliID in self.clientIDs:
             #TODO: resume session here
@@ -109,6 +113,7 @@ class Client():
         self.addr = addr
         self.sock = sock
         self.connection = True
+        self.will = None
 
     def setInfo(self, cliID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
         self.cliID = cliID
@@ -126,9 +131,11 @@ class Client():
     def disconnect(self):
         # when ping packet didn't came within the keepAlive * 1.5 sec
         self.connection = False
-        frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
-                             topic = self.will["topic"], message = self.will["message"], messageID = 1)
-        self.sendWill(frame)
+        if self.will:
+            # TODO: send message if there is will
+            frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
+                                          topic = self.will["topic"], message = self.will["message"], messageID = 1)
+            self.sendWill(frame)
         self.sock.close()
         self.server.clients.pop(self.addr)
         print("disconnect")

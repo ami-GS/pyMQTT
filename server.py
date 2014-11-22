@@ -69,13 +69,6 @@ class Broker(Frame):
         else:
             self.clientSubscribe[topicQoS[0]] = [[client.addr, topicQoS[1]]]
 
-    def unsetWill(self):
-        #when
-        pass
-
-    def sendWill(self, frame):
-        pass # send willFrame to clients ?
-
     def unsetTopic(self, client, topic):
         # not cool
         client.unsetTopic(topic)
@@ -125,17 +118,16 @@ class Client():
         self.subscribe = []
         self.clean = clean
 
-    def sendWill(self, frame):
-        self.server.sendWill(frame)
+    def sendWill(self):
+        frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
+                                      topic = self.will["topic"], message = self.will["message"], messageID = 1)
+        self.send(frame)
 
     def disconnect(self):
         # when ping packet didn't came within the keepAlive * 1.5 sec
         self.connection = False
         if self.will:
-            # TODO: send message if there is will
-            frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
-                                          topic = self.will["topic"], message = self.will["message"], messageID = 1)
-            self.sendWill(frame)
+            self.sendWill()
         self.sock.close()
         self.server.clients.pop(self.addr)
         print("disconnect")

@@ -71,8 +71,11 @@ class Broker(Frame):
 
     def unsetTopic(self, client, topic):
         # not cool
-        client.unsetTopic(topic)
-        self.clientSubscribe[topic].remove(self.clientSubscribe[topic][[a[0] for a in self.clientSubscribe[topic]].index(client.addr)])
+        if client.addr in [a[0] for a in self.clientSubscribe[topic]]:
+            self.clientSubscribe[topic].remove(self.clientSubscribe[topic][[a[0] for a in self.clientSubscribe[topic]].index(client.addr)])
+        else:
+            # TODO: this should be removed in the future
+            print("(%s, %d) doesn't exist in %s" % (client.addr[0], client.addr[1], topic))
 
     def disconnect(self, client):
         # when get DISCONNECT packet from client
@@ -82,7 +85,7 @@ class Broker(Frame):
         if client.clean:
             # TODO: correct ?
             for topic in client.subscribe:
-                self.unsetTopic(client, topic)
+                self.unsetTopic(client, topic[0])
             self.clients.pop(client.addr)
 
         print("disconnect")
@@ -129,7 +132,8 @@ class Client():
         if self.will:
             self.sendWill()
         self.sock.close()
-        self.server.clients.pop(self.addr)
+        if self.clean:
+            self.server.clients.pop(self.addr)
         print("disconnect")
 
     def setTopic(self, topicQoS):

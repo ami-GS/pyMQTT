@@ -27,15 +27,14 @@ class Client(Frame):
             data = self.sock.recv(size)
             self.parseFrame(data, self)
 
-    def connect(self, name = "", passwd = "", will = 0, willTopic = "", willMessage = "", clean = 0, keepAlive = 2):
+    def connect(self, name = "", passwd = "", will = {}, clean = 0, keepAlive = 2):
         # TODO: above default value should be considered
         self.cleanSession = clean
         self.sock.connect(self.addr)
         self.connection = True
         self.keepAlive = keepAlive
         frame = self.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
-                             will = will, willTopic = willTopic, willMessage = willMessage,
-                             clean = clean, cliID = self.ID, keepAlive = keepAlive)
+                             will = will, clean = clean, cliID = self.ID, keepAlive = keepAlive)
         self.sock.send(frame)
         self.recvThread = Thread(target=self.recv)
         self.recvThread.start()

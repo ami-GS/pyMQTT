@@ -4,8 +4,6 @@ from util import upackHex, packHex, utfEncode, utfDecode
 from settings import TYPE
 from settings import ConnectReturn as CR
 
-willQoS = 3 #temporaly
-
 # TODO: this should be class, and each instance should has cliID, name, etc.. info.
 class Frame(object):
     def makeFrame(self, t, dup, qos, retain, **kwargs):
@@ -22,15 +20,16 @@ class Frame(object):
             frame += packHex(SUPPORT_PROTOCOL_VERSIONS[0])
             flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
             flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
-            flag |= 1 << 5 if kwargs["will"] else 0 << 5 # for future use
-            flag |= willQoS << 3 if kwargs["will"] else 0 << 3
-            flag |= 1 << 2 if kwargs["will"] else 0 << 2
+            if kwargs["will"]:
+                flag |= 1 << 5
+                flag |= kwargs["will"]["QoS"] << 3
+                flag |= 1 << 2
             flag |= 1 << 1 if kwargs["clean"] else 0 << 1
             frame += packHex(flag)
             frame += packHex(kwargs["keepAlive"], 4)
             frame += utfEncode(kwargs["cliID"]) if kwargs.has_key("cliID") else ""
-            frame += utfEncode(kwargs["willTopic"]) if kwargs.has_key("will") else ""
-            frame += utfEncode(kwargs["willMessage"]) if kwargs.has_key("will") else ""
+            frame += utfEncode(kwargs["will"]["topic"]) if kwargs.has_key("will") else ""
+            frame += utfEncode(kwargs["will"]["message"]) if kwargs.has_key("will") else ""
             frame += utfEncode(kwargs["name"]) if kwargs.has_key("name") else ""
             frame += utfEncode(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
             # TODO: save these settings to server, if there is no cliID, then apply the ID from server

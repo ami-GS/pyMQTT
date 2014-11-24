@@ -198,14 +198,15 @@ class Frame(object):
         def subscribe(data):
             c = 2
             messageID = upackHex(data[:c])
+            allowedQoSs = []
             while data[c:]:
                 topic, topicLen = utfDecode(data[c:])
                 reqQoS = upackHex(data[c+topicLen])
-                self.setTopic(client, [topic, reqQoS], messageID)
+                self.setTopic(client, topic, reqQoS, messageID)
+                allowedQoSs.append(reqQoS)
                 c += topicLen + 1
-            # this looks mistake, the qosList should contain only subscribed QoSs
             client.send(self.makeFrame(TYPE.SUBACK, 0, 0, 0, messageID = messageID,
-                                 qosList = [topic[1] for topic in client.subscribe]))
+                                       qosList = allowedQoSs))
             # publish may be sent
 
         def suback(data):

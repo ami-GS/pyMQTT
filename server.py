@@ -55,24 +55,23 @@ class Broker(Frame):
 
         client.setInfo(cliID, name, passwd, will, keepAlive, clean)
 
-    def setTopic(self, client, topicQoS, messageID):
-        client.setTopic(topicQoS)
+    def setTopic(self, client, topic, QoS, messageID):
+        client.setTopic(topic, QoS)
 
-        if self.topics.has_key(topicQoS[0]) and self.topics[topicQoS[0]]:
+        if self.topics.has_key(topic) and self.topics[topic]:
             # this is 'retain'
-            frame = self.makeFrame(TYPE.PUBLISH, 0, topicQoS[1], 1, topic = topicQoS[0],
-                                message = self.topics[topicQoS[0]], messageID = messageID)
+            frame = self.makeFrame(TYPE.PUBLISH, 0, QoS, 1, topic = topic,
+                                message = self.topics[topic], messageID = messageID)
             client.send(frame)
 
-        if self.clientSubscribe.has_key(topicQoS[0]):
-            self.clientSubscribe[topicQoS[0]].append([client.addr, topicQoS[1]])
+        if self.clientSubscribe.has_key(topic):
+            self.clientSubscribe[topic].append(client.addr)
         else:
-            self.clientSubscribe[topicQoS[0]] = [[client.addr, topicQoS[1]]]
+            self.clientSubscribe[topic] = [client.addr]
 
     def unsetTopic(self, client, topic):
-        # not cool
-        if client.addr in [a[0] for a in self.clientSubscribe[topic]]:
-            self.clientSubscribe[topic].remove(self.clientSubscribe[topic][[a[0] for a in self.clientSubscribe[topic]].index(client.addr)])
+        if client.addr in self.clientSubscribe[topic]:
+            self.clientSubscribe[topic].remove(client.addr)
         else:
             # TODO: this should be removed in the future
             print("(%s, %d) doesn't exist in %s" % (client.addr[0], client.addr[1], topic))
@@ -85,7 +84,7 @@ class Broker(Frame):
         if client.clean:
             # TODO: correct ?
             for topic in client.subscribe:
-                self.unsetTopic(client, topic[0])
+                self.unsetTopic(client, topic.keys()[0])
             self.clients.pop(client.addr)
 
         print("disconnect")
@@ -93,8 +92,8 @@ class Broker(Frame):
     def publish(self, topic, message, messageID = 1, retain = 0):
         if self.clientSubscribe.has_key(topic):
             for client in self.clientSubscribe[topic]:
-                frame = self.makeFrame(TYPE.PUBLISH, 0, client[1], 0, topic = topic,
-                                       message = message, messageID = messageID)
+                frame = self.makeFrame(TYPE.PUBLISH, 0, self.clients[client].getQoS(topic), 0,
+                                       topic = topic, message = message, messageID = messageID)
                 self.clients[client[0]].send(frame)
         else:
             self.clientSubscribe[topic] = []
@@ -136,11 +135,14 @@ class Client():
             self.server.clients.pop(self.addr)
         print("disconnect")
 
-    def setTopic(self, topicQoS):
-        self.subscribe.append(topicQoS)
+    def setTopic(self, topic, QoS):
+        self.subscribe.append({topic: QoS})
+
+    def getQoS(self, topic):
+        return self.subscribe[topic]
 
     def unsetTopic(self, topic):
-        self.subscribe.remove(self.subscribe[[t[0] for t in self.subscribe].index(topic)])
+        self.subscribe.pop(topic)
 
     def recv(self, num):
         return self.sock.recv(num)

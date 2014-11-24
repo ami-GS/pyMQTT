@@ -55,11 +55,12 @@ class Client(Frame):
         if (qos == 1 or qos == 2) and messageID == 0:
             #error, here
             pass
-        elif qos == 1:
+        if qos == 1:
             # save the message until puback will come
             self.messages[messageID] = [topic, message]
-            # recv puback
-            # remove the message
+        elif qos == 0 and dup:
+            print("Warning: DUP flag should be 0 if QoS is set as 0")
+            dup = 0
         frame = self.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
 

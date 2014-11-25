@@ -24,10 +24,9 @@ class Broker(Frame):
         while True:
             data = client.recv(1 << 16)
             self.parseFrame(data, client)
-            if client.connection:
-                client.restartTimer()
-            else:
+            if not client.connection:
                 break
+            client.restartTimer()
 
     def runServer(self):
         while True:

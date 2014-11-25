@@ -22,7 +22,7 @@ class Client(Frame):
     def send(self, frame):
         self.sock.send(frame)
 
-    def recv(self, size = 1024):
+    def __recv(self, size = 1024):
         while self.connection:
             data = self.sock.recv(size)
             self.parseFrame(data, self)
@@ -35,8 +35,8 @@ class Client(Frame):
         self.keepAlive = keepAlive
         frame = self.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
                              will = will, clean = clean, cliID = self.ID, keepAlive = keepAlive)
-        self.sock.send(frame)
-        self.recvThread = Thread(target=self.recv)
+        self.send(frame)
+        self.recvThread = Thread(target=self.__recv)
         self.recvThread.start()
         self.pingThread = Thread(target=self.__pingreq)
         self.pingThread.start()

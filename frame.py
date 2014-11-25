@@ -232,7 +232,7 @@ class Frame(object):
             client.send(self.makeFrame(TYPE.PINGRESP, 0, 0, 0))
 
         def pingresp(data):
-            self.initTimer()
+            self.__initTimer()
 
         def disconnect(data):
             self.disconnect(client)

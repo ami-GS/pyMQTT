@@ -19,10 +19,10 @@ class Client(Frame):
         self.messages = {}
         self.keepAlive = 2
 
-    def send(self, frame):
+    def __send(self, frame):
         self.sock.send(frame)
 
-    def recv(self, size = 1024):
+    def __recv(self, size = 1024):
         while self.connection:
             data = self.sock.recv(size)
             self.parseFrame(data, self)
@@ -35,8 +35,8 @@ class Client(Frame):
         self.keepAlive = keepAlive
         frame = self.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
                              will = will, clean = clean, cliID = self.ID, keepAlive = keepAlive)
-        self.sock.send(frame)
-        self.recvThread = Thread(target=self.recv)
+        self.__send(frame)
+        self.recvThread = Thread(target=self.__recv)
         self.recvThread.start()
         self.pingThread = Thread(target=self.__pingreq)
         self.pingThread.start()
@@ -47,7 +47,7 @@ class Client(Frame):
             return
         self.connection = False
         frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
-        self.send(frame)
+        self.__send(frame)
         self.sock.close()
         print("disconnect")
 
@@ -62,9 +62,9 @@ class Client(Frame):
             print("Warning: DUP flag should be 0 if QoS is set as 0")
             dup = 0
         frame = self.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
-        self.send(frame)
+        self.__send(frame)
 
-    def initTimer(self):
+    def __initTimer(self):
         self.timer.cancel()
         self.timer = Timer(self.keepAlive, self.disconnect)
 
@@ -72,7 +72,7 @@ class Client(Frame):
         self.timer = Timer(self.keepAlive, self.disconnect)
         while self.connection:
             # Q: continuously send req? or send after receiving resp?
-            self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
+            self.__send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
             self.timer.start()
             time.sleep(self.keepAlive)
 
@@ -84,7 +84,7 @@ class Client(Frame):
             qos = 0
 
         frame = self.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
-        self.send(frame)
+        self.__send(frame)
 
     def unsubscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
@@ -94,4 +94,4 @@ class Client(Frame):
             qos = 0
 
         frame = self.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
-        self.send(frame)
+        self.__send(frame)

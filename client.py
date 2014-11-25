@@ -64,7 +64,7 @@ class Client(Frame):
         frame = self.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
 
-    def initTimer(self):
+    def __initTimer(self):
         self.timer.cancel()
         self.timer = Timer(self.keepAlive, self.disconnect)
 

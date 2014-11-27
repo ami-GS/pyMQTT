@@ -18,6 +18,9 @@ class Client(Frame):
         self.connection = False
         self.messages = {}
         self.keepAlive = 2
+        self.subscribes = {}
+        self.subTmp = []
+        self.unsubTmp = []
 
     def send(self, frame):
         self.sock.send(frame)
@@ -85,6 +88,12 @@ class Client(Frame):
 
         frame = self.makeFrame(TYPE.SUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
+        self.subTmp.append(topics)
+
+    def setSubscribe(self, QoSs):
+        tmp = self.subTmp.pop(0)
+        for i in range(len(QoSs)):
+            self.subscribes[tmp[i][0]] = QoSs[i]
 
     def unsubscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [topic1, topic2 ...]
@@ -95,3 +104,9 @@ class Client(Frame):
 
         frame = self.makeFrame(TYPE.UNSUBSCRIBE, dup, qos, 0, topics = topics, messageID = messageID)
         self.send(frame)
+        self.unsubTmp.append(topics)
+
+    def unsetSubscribe(self):
+        tmp = self.unsubTmp.pop(0)
+        for topic in tmp:
+            self.subscribes.pop(topic)

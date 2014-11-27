@@ -212,9 +212,11 @@ class Frame(object):
         def suback(data):
             c = 2
             messageID = upackHex(data[:c])
+            allowedQoSs = []
             for q in data[2:]:
-                allowedQoS = upackHex(q)
+                allowedQoSs.append(upackHex(q))
                 c += 1
+            self.setSubscribe(allowedQoSs)
 
         def unsubscribe(data):
             c = 2
@@ -227,6 +229,7 @@ class Frame(object):
 
         def unsuback(data):
             messageID = upackHex(data[:2])
+            self.unsetSubscribe()
 
         def pingreq(data):
             client.send(self.makeFrame(TYPE.PINGRESP, 0, 0, 0))

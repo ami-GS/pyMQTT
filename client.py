@@ -39,6 +39,8 @@ class Client(Frame):
         frame = self.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
                              will = will, clean = clean, cliID = self.ID, keepAlive = keepAlive)
         self.send(frame)
+
+    def startSession(self):
         self.recvThread = Thread(target=self.__recv)
         self.recvThread.start()
         self.pingThread = Thread(target=self.__pingreq)
@@ -58,14 +60,27 @@ class Client(Frame):
         if (qos == 1 or qos == 2) and messageID == 0:
             #error, here
             pass
-        if qos == 1:
-            # save the message until puback will come
-            self.messages[messageID] = [topic, message]
-        elif qos == 0 and dup:
-            print("Warning: DUP flag should be 0 if QoS is set as 0")
+        if qos == 1 and qos == 2:
+            # this stahds for unacknowledged state
+            self.messages[messageID] = ["publish", topic, message]
+        elif (qos == 0 or qos == 2) and dup:
+            print("Warning: DUP flag should be 0 if QoS is set as %d" % qos)
             dup = 0
+
         frame = self.makeFrame(TYPE.PUBLISH, dup, qos, retain, topic = topic, message = message, messageID = messageID)
         self.send(frame)
+
+    def puback(self, messageID):
+        self.messages.pop(messageID)
+
+    def pubrec(self, messageID):
+        self.messages.pop(messageID)
+
+    def pubcomp(self, messageID):
+        self.messages.pop(messageID)
+
+    def setUnacknowledged(self, messageID):
+        self.messages[messageID] = ["pubrel"]
 
     def initTimer(self):
         self.timer.cancel()

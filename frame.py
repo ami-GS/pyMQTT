@@ -161,6 +161,7 @@ class Frame(object):
         def connack(data):
             topicCompress = data[0]
             code = data[1]
+            self.startSession()
 
         def publish(data):
             topic, cursor = utfDecode(data)
@@ -181,19 +182,23 @@ class Frame(object):
 
         def puback(data):
             messageID = upackHex(data[:2])
+            self.puback(messageID)
             # delete message ?
 
         def pubrec(data):
             messageID = upackHex(data[:2])
+            self.pubrec(messageID)
             client.send(self.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID))
+            self.setUnacknowledged(messageID)
 
         def pubrel(data):
             messageID = upackHex(data[:2])
             client.send(self.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID))
+            self.pubrel(messageID)
 
         def pubcomp(data):
             messageID = upackHex(data[:2])
-            # delete message ?
+            self.pubcomp(messageID)
 
         def subscribe(data):
             c = 2

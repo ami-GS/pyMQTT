@@ -17,6 +17,7 @@ class Broker(Frame):
         self.wills = {}
         self.clientSubscribe = {}
         self.clientIDs = []
+        self.usedMessageIDs = {}
         # NOTICE: keys of topics and clientSubscribe should be synchronized
         self.serv.listen(1)
 
@@ -53,15 +54,19 @@ class Broker(Frame):
             self.clientIDs.append(cliID)
 
         client.setInfo(cliID, name, passwd, will, keepAlive, clean)
+        #this shold not be here
+        client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
 
     def setTopic(self, client, topic, QoS, messageID):
         client.setTopic(topic, QoS)
-
         if self.topics.has_key(topic) and self.topics[topic]:
             # this is 'retain'
             frame = self.makeFrame(TYPE.PUBLISH, 0, QoS, 1, topic = topic,
                                 message = self.topics[topic], messageID = messageID)
             client.send(frame)
+            if QoS == 1 or QoS == 2:
+                client.messageState[messageID + i+1] = ["publish", topic, message]
+                self.usedMessageIDs[messageID + i+1] = client
 
         if self.clientSubscribe.has_key(topic):
             self.clientSubscribe[topic].append(client.addr)
@@ -88,18 +93,44 @@ class Broker(Frame):
 
         print("disconnect")
 
-    def publish(self, topic, message, messageID = 1, retain = 0):
+    def publishAll(self, topic, message, messageID = 1, retain = 0):
         if self.clientSubscribe.has_key(topic):
-            for client in self.clientSubscribe[topic]:
-                frame = self.makeFrame(TYPE.PUBLISH, 0, self.clients[client].getQoS(topic), 0,
-                                       topic = topic, message = message, messageID = messageID)
-                self.clients[client[0]].send(frame)
+            for addrs in self.clientSubscribe[topic]:
+                for i in range(len(addrs)):
+                    client = self.clients[addrs[i]]
+                    QoS = client.getQoS(topic)
+                    frame = self.makeFrame(TYPE.PUBLISH, 0, QoS, 0, topic = topic,
+                                           message = message, messageID = messageID + i+1)
+                    client.send(frame)
+                    if QoS == 1 or QoS == 2:
+                        client.messageState[messageID + i+1] = ["publish", topic, message]
+                        self.usedMessageIDs[messageID + i+1] = client
         else:
             self.clientSubscribe[topic] = []
             self.topics[topic] = ""
 
         if retain:
             self.topics[topic] = message #TODO: QoS shold also be saved
+
+    def setUnacknowledge(self, messageID, client):
+        client.messageState[messageID] = ["pubrec"]
+        self.usedMessageIDs[messageID] = client
+
+    def puback(self, messageID):
+        client = self.usedMessageIDs.pop(messageID)
+        client.unsetAcknowledge(messageID)
+
+    def pubrec(self, messageID):
+        client = self.usedMessageIDs.pop(messageID)
+        client.unsetAcknowledge(messageID)
+
+    def pubrel(self, messageID):
+        client = self.usedMessageIDs.pop(messageID)
+        client.unsetAcknowledge(messageID)
+
+    def pubcomp(self, messageID):
+        client = self.usedMessageIDs.pop(messageID)
+        client.unsetAcknowledge(messageID)
 
 class Client():
     def __init__(self, server, addr, sock):
@@ -108,6 +139,7 @@ class Client():
         self.sock = sock
         self.connection = True
         self.will = None
+        self.messageState = {}
 
     def setInfo(self, cliID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
         self.cliID = cliID
@@ -133,6 +165,9 @@ class Client():
         if self.clean:
             self.server.clients.pop(self.addr)
         print("disconnect")
+
+    def unsetAcknowledge(self, messageID):
+        self.messageState.pop(messageID)
 
     def setTopic(self, topic, QoS):
         self.subscribe.append({topic: QoS})

@@ -36,13 +36,13 @@ class Client(Frame):
         self.sock.connect(self.addr)
         self.connection = True
         self.keepAlive = keepAlive
+        self.recvThread = Thread(target=self.__recv)
+        self.recvThread.start()
         frame = self.makeFrame(TYPE.CONNECT, 0, 0, 0, name = name, passwd = passwd,
                              will = will, clean = clean, cliID = self.ID, keepAlive = keepAlive)
         self.send(frame)
 
     def startSession(self):
-        self.recvThread = Thread(target=self.__recv)
-        self.recvThread.start()
         self.pingThread = Thread(target=self.__pingreq)
         self.pingThread.start()
 
@@ -60,7 +60,7 @@ class Client(Frame):
         if (qos == 1 or qos == 2) and messageID == 0:
             #error, here
             pass
-        if qos == 1 and qos == 2:
+        if qos == 1 or qos == 2:
             # this stahds for unacknowledged state
             self.messages[messageID] = ["publish", topic, message]
         elif (qos == 0 or qos == 2) and dup:

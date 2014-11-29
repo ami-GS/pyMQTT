@@ -69,27 +69,28 @@ class Broker(Frame):
                 self.usedMessageIDs[messageID + i+1] = client
 
         if self.clientSubscribe.has_key(topic):
-            self.clientSubscribe[topic].append(client.addr)
+            self.clientSubscribe[topic].append(client.getAddr())
         else:
-            self.clientSubscribe[topic] = [client.addr]
+            self.clientSubscribe[topic] = [client.getAddr()]
 
     def unsetTopic(self, client, topic):
-        if client.addr in self.clientSubscribe[topic]:
-            self.clientSubscribe[topic].remove(client.addr)
+        if client.getAddr() in self.clientSubscribe[topic]:
+            self.clientSubscribe[topic].remove(client.getAddr())
         else:
             # TODO: this should be removed in the future
-            print("(%s, %d) doesn't exist in %s" % (client.addr[0], client.addr[1], topic))
+            addr = client.getAddr()
+            print("(%s, %d) doesn't exist in %s" % (addr[0], addr[1], topic))
 
     def disconnect(self, client):
         # when get DISCONNECT packet from client
         client.connection = False
-        client.sock.close()
+        client.close()
         client.timer.cancel()
         if client.clean:
             # TODO: correct ?
             for topic in client.subscribe:
                 self.unsetTopic(client, topic.keys()[0])
-            self.clients.pop(client.addr)
+            self.clients.pop(client.getAddr())
 
         print("disconnect")
 
@@ -135,21 +136,24 @@ class Broker(Frame):
 class Client():
     def __init__(self, server, addr, sock):
         self.server = server
-        self.addr = addr
-        self.sock = sock
+        self.__addr = addr
+        self.__sock = sock
         self.connection = True
         self.will = None
         self.messageState = {}
 
     def setInfo(self, cliID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
         self.cliID = cliID
-        self.name = name
-        self.passwd = passwd
+        self.__name = name
+        self.__passwd = passwd
         self.will = will
         self.keepAlive = keepAlive
         self.timer = Timer(keepAlive * 1.5, self.disconnect)
         self.subscribe = []
         self.clean = clean
+
+    def getAddr(self):
+        return self.__addr
 
     def sendWill(self):
         frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
@@ -161,9 +165,9 @@ class Client():
         self.connection = False
         if self.will:
             self.sendWill()
-        self.sock.close()
+        self.__sock.close()
         if self.clean:
-            self.server.clients.pop(self.addr)
+            self.server.clients.pop(self.__addr)
         print("disconnect")
 
     def unsetAcknowledge(self, messageID):
@@ -179,10 +183,13 @@ class Client():
         self.subscribe.pop(topic)
 
     def recv(self, num):
-        return self.sock.recv(num)
+        return self.__sock.recv(num)
 
     def send(self, frame):
-        self.sock.send(frame)
+        self.__sock.send(frame)
+
+    def close(self):
+        self.__sock.close()
 
     def restartTimer(self):
         self.timer.cancel()

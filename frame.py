@@ -175,10 +175,11 @@ class Frame(object):
                 client.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
             elif qos == 2:
                 client.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
+                self.setUnacknowledge(messageID, client)
 
             if "server.Broker" in str(self):
                 # this should be called only if child class is Broker
-                self.publish(topic, pubData, messageID, retain)
+                self.publishAll(topic, pubData, messageID, retain)
 
         def puback(data):
             messageID = upackHex(data[:2])

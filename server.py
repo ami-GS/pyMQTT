@@ -16,7 +16,7 @@ class Broker(Frame):
         self.topics = {}
         self.wills = {}
         self.clientSubscribe = {}
-        self.clientIDs = []
+        self.clientIDs = {}
         self.usedMessageIDs = {}
         # NOTICE: keys of topics and clientSubscribe should be synchronized
         self.serv.listen(1)
@@ -45,15 +45,18 @@ class Broker(Frame):
                 return
             cliID = "unknown" + str(len(self.clients)) # TODO: cliID should be determined in here if no cliID was delivered.
 
-        if cliID in self.clientIDs:
-            #TODO: resume session here
-            if clean:
-                self.clientIDs.remove(cliID)
-
-        if not clean:
-            self.clientIDs.append(cliID)
-
         client.setInfo(cliID, name, passwd, will, keepAlive, clean)
+        if cliID in self.clientIDs.keys():
+            if clean:
+                self.clientIDs.pop(cliID)
+            else:
+                #TODO: name and passwd validation shuld be here?
+                client.resumeSession(self.clientIDs[cliID])
+                self.clientIDs[cliID] = client
+                #TODO: issue, the self.clientSubscribe contains previous address
+        elif not clean:
+            self.clientIDs[cliID] = client
+
         #this shold not be here
         client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
 
@@ -142,7 +145,6 @@ class Client():
         self.__sock = sock
         self.connection = True
         self.will = None
-        self.messageState = {}
 
     def setInfo(self, cliID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
         self.cliID = cliID
@@ -153,9 +155,30 @@ class Client():
         self.timer = Timer(keepAlive * 1.5, self.disconnect)
         self.subscribe = []
         self.clean = clean
+        self.messageState = {}
+
+    def resumeSession(self, client):
+        self.cliID = client.cliID
+        self.__name = client.getName()
+        self.__passwd = client.getPasswd()
+        self.will = client.will #correct?
+        self.keepAlive = client.keepAlive
+        self.timer = Timer(self.keepAlive * 1.5, self.disconnect)
+        self.subscribe = client.subscribe
+        self.clean = client.clean
+        self.messageState = client.messageState
 
     def getAddr(self):
         return self.__addr
+
+    def getSocket(self):
+        return self.__sock
+
+    def getName(self):
+        return self.__name
+
+    def getPasswd(self):
+        return self.__passwd
 
     def sendWill(self):
         frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],

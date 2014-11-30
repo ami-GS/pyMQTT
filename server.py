@@ -94,7 +94,6 @@ class Broker(Frame):
             # TODO: correct ?
             for topic in client.subscribe:
                 self.unsetTopic(client, topic.keys()[0])
-                client.unsetTopic(topic)
             self.clients.pop(client.getAddr())
 
         print("disconnect")

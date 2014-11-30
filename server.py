@@ -76,6 +76,7 @@ class Broker(Frame):
     def unsetTopic(self, client, topic):
         if client.getAddr() in self.clientSubscribe[topic]:
             self.clientSubscribe[topic].remove(client.getAddr())
+            client.unsetTopic(topic)
         else:
             # TODO: this should be removed in the future
             addr = client.getAddr()
@@ -90,6 +91,7 @@ class Broker(Frame):
             # TODO: correct ?
             for topic in client.subscribe:
                 self.unsetTopic(client, topic.keys()[0])
+                client.unsetTopic(topic)
             self.clients.pop(client.getAddr())
 
         print("disconnect")
@@ -176,11 +178,14 @@ class Client():
     def setTopic(self, topic, QoS):
         self.subscribe.append({topic: QoS})
 
+    def unsetTopic(self, topic):
+        #TODO: not cool
+        topics = [i.keys()[0] for i in self.subscribe]
+        if topic in topics:
+            self.subscribe.pop(topics.index(topic))
+
     def getQoS(self, topic):
         return self.subscribe[topic]
-
-    def unsetTopic(self, topic):
-        self.subscribe.pop(topic)
 
     def recv(self, num):
         return self.__sock.recv(num)

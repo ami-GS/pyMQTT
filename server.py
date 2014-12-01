@@ -93,23 +93,22 @@ class Broker(Frame):
         if client.clean:
             # TODO: correct ?
             for topic in client.subscribe:
-                self.unsetTopic(client, topic.keys()[0])
+                self.clientSubscribe[topic].remove(client.getAddr())
             self.clients.pop(client.getAddr())
 
         print("disconnect")
 
     def publishAll(self, topic, message, messageID = 1, retain = 0):
         if self.clientSubscribe.has_key(topic):
-            for addrs in self.clientSubscribe[topic]:
-                for i in range(len(addrs)):
-                    client = self.clients[addrs[i]]
-                    QoS = client.getQoS(topic)
-                    frame = self.makeFrame(TYPE.PUBLISH, 0, QoS, 0, topic = topic,
-                                           message = message, messageID = messageID + i+1)
-                    client.send(frame)
-                    if QoS == 1 or QoS == 2:
-                        client.messageState[messageID + i+1] = ["publish", topic, message]
-                        self.usedMessageIDs[messageID + i+1] = client
+            for i, addrs in enumerate(self.clientSubscribe[topic]):
+                client = self.clients[addrs]
+                QoS = client.getQoS(topic)
+                frame = self.makeFrame(TYPE.PUBLISH, 0, QoS, 0, topic = topic,
+                                       message = message, messageID = messageID + i+1)
+                client.send(frame)
+                if QoS == 1 or QoS == 2:
+                    client.messageState[messageID + i+1] = ["publish", topic, message]
+                    self.usedMessageIDs[messageID + i+1] = client
         else:
             self.clientSubscribe[topic] = []
             self.topics[topic] = ""
@@ -152,7 +151,7 @@ class Client():
         self.will = will
         self.keepAlive = keepAlive
         self.timer = Timer(keepAlive * 1.5, self.disconnect)
-        self.subscribe = []
+        self.subscribe = {}
         self.clean = clean
         self.messageState = {}
 
@@ -198,13 +197,11 @@ class Client():
         self.messageState.pop(messageID)
 
     def setTopic(self, topic, QoS):
-        self.subscribe.append({topic: QoS})
+        self.subscribe[topic] = QoS
 
     def unsetTopic(self, topic):
-        #TODO: not cool
-        topics = [i.keys()[0] for i in self.subscribe]
-        if topic in topics:
-            self.subscribe.pop(topics.index(topic))
+        if topic in self.subscribe.keys():
+            self.subscribe.pop(topic)
 
     def getQoS(self, topic):
         return self.subscribe[topic]

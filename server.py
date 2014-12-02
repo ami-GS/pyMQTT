@@ -51,14 +51,20 @@ class Broker(Frame):
                 self.clientIDs.pop(cliID)
             else:
                 #TODO: name and passwd validation shuld be here?
-                client.resumeSession(self.clientIDs[cliID])
-                self.clientIDs[cliID] = client
-                #TODO: issue, the self.clientSubscribe contains previous address
+                self.resumeSession(client, cliID)
         elif not clean:
             self.clientIDs[cliID] = client
 
         #this shold not be here
         client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
+
+    def resumeSession(self, client, cliID):
+        print self.clientSubscribe
+        client.resumeSession(self.clientIDs[cliID])
+        for topic in client.subscribe:
+            self.clientSubscribe[topic].append(client.getAddr())
+        self.clientIDs[cliID] = client
+        print self.clientSubscribe
 
     def setTopic(self, client, topic, QoS, messageID):
         client.setTopic(topic, QoS)
@@ -90,10 +96,12 @@ class Broker(Frame):
         client.connection = False
         client.close()
         client.timer.cancel()
+        # the address should be removed even if the clean flag is not set.
+        print self.clientSubscribe, "disconnect"
+        for topic in client.subscribe:
+            self.clientSubscribe[topic].remove(client.getAddr())
         if client.clean:
             # TODO: correct ?
-            for topic in client.subscribe:
-                self.clientSubscribe[topic].remove(client.getAddr())
             self.clients.pop(client.getAddr())
 
         print("disconnect")

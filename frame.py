@@ -175,7 +175,7 @@ class Frame(object):
                 client.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
             elif qos == 2:
                 client.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
-                self.setUnacknowledge(messageID, client)
+                self.setState(["pubrec"], messageID, client)
 
             if "server.Broker" in str(self):
                 # this should be called only if child class is Broker
@@ -190,7 +190,7 @@ class Frame(object):
             messageID = upackHex(data[:2])
             self.pubrec(messageID)
             client.send(self.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID))
-            self.setUnacknowledged(messageID)
+            self.setState(["pubrel"], messageID, client)
 
         def pubrel(data):
             messageID = upackHex(data[:2])

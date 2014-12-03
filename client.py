@@ -62,7 +62,7 @@ class Client(Frame):
             pass
         if qos == 1 or qos == 2:
             # this stahds for unacknowledged state
-            self.messages[messageID] = ["publish", topic, message]
+            self.setState(["publish", topic, message, qos, retain], messageID, None)
         elif (qos == 0 or qos == 2) and dup:
             print("Warning: DUP flag should be 0 if QoS is set as %d" % qos)
             dup = 0
@@ -79,8 +79,19 @@ class Client(Frame):
     def pubcomp(self, messageID):
         self.messages.pop(messageID)
 
-    def setUnacknowledged(self, messageID):
-        self.messages[messageID] = ["pubrel"]
+    def setState(self, state, messageID, dummy):
+        self.messages[messageID] = state
+
+    def resend(self):
+        for messageID in self.messages:
+            state = self.messages[messageID]
+            if state[0] == "publish":
+                self.send(self.makeFrame(TYPE.PUBLISH, 1, state[3], state[4], topic = state[1],
+                                         message = state[2], messageID = messageID))
+            elif state[0] == "pubrec":
+                self.send(self.makeFrame(TYPE.PUBREC, 1, 0, 0, messageID = messageID))
+            elif state[0] == "pubrel":
+                self.send(self.makeFrame(TYPE.PUBREL, 1, 1, 0, messageID = messageID))
 
     def initTimer(self):
         self.timer.cancel()

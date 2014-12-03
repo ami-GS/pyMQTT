@@ -59,12 +59,10 @@ class Broker(Frame):
         client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
 
     def resumeSession(self, client, cliID):
-        print self.clientSubscribe
         client.resumeSession(self.clientIDs[cliID])
         for topic in client.subscribe:
             self.clientSubscribe[topic].append(client.getAddr())
         self.clientIDs[cliID] = client
-        print self.clientSubscribe
 
     def setTopic(self, client, topic, QoS, messageID):
         client.setTopic(topic, QoS)
@@ -74,8 +72,7 @@ class Broker(Frame):
                                 message = self.topics[topic], messageID = messageID)
             client.send(frame)
             if QoS == 1 or QoS == 2:
-                client.messageState[messageID + i+1] = ["publish", topic, message]
-                self.usedMessageIDs[messageID + i+1] = client
+                self.setState(["publish", topic, message], messageID + i+1, client)
 
         if self.clientSubscribe.has_key(topic):
             self.clientSubscribe[topic].append(client.getAddr())
@@ -97,7 +94,6 @@ class Broker(Frame):
         client.close()
         client.timer.cancel()
         # the address should be removed even if the clean flag is not set.
-        print self.clientSubscribe, "disconnect"
         for topic in client.subscribe:
             self.clientSubscribe[topic].remove(client.getAddr())
         if client.clean:
@@ -115,8 +111,7 @@ class Broker(Frame):
                                        message = message, messageID = messageID + i+1)
                 client.send(frame)
                 if QoS == 1 or QoS == 2:
-                    client.messageState[messageID + i+1] = ["publish", topic, message]
-                    self.usedMessageIDs[messageID + i+1] = client
+                    self.setState(["publish", topic, message], messageID + i+1, client)
         else:
             self.clientSubscribe[topic] = []
             self.topics[topic] = ""
@@ -124,8 +119,9 @@ class Broker(Frame):
         if retain:
             self.topics[topic] = message #TODO: QoS shold also be saved
 
-    def setUnacknowledge(self, messageID, client):
-        client.messageState[messageID] = ["pubrec"]
+    def setState(self, state, messageID, client):
+        # unacknowledge state
+        client.messageState[messageID] = state
         self.usedMessageIDs[messageID] = client
 
     def puback(self, messageID):
@@ -173,6 +169,19 @@ class Client():
         self.subscribe = client.subscribe
         self.clean = client.clean
         self.messageState = client.messageState
+        self.resend()
+
+    def resend(self):
+        for messageID in self.messageState:
+            state = self.messageState[messageID]
+            if state[0] == "publish":
+                QoS = self.getQoS[state[1]]
+                self.send(self.server.makeFrame(TYPE.PUBLISH, 1, QoS, 0, topic = state[1],
+                                                message = state[2], messageID = messageID))
+            elif state[0] == "pubrec":
+                self.send(self.server.makeFrame(TYPE.PUBREC, 1, 0, 0, messageID = messageID))
+            elif state[0] == "pubrel":
+                self.send(self.server.makeFrame(TYPE.PUBREL, 1, 1, 0, messageID = messageID))
 
     def getAddr(self):
         return self.__addr

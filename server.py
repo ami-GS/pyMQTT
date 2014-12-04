@@ -51,18 +51,18 @@ class Broker(Frame):
                 self.clientIDs.pop(cliID)
             else:
                 #TODO: name and passwd validation shuld be here?
-                self.resumeSession(client, cliID)
+                self.resumeSession(client)
         elif not clean:
             self.clientIDs[cliID] = client
 
         #this shold not be here
         client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.ACCEPTED))
 
-    def resumeSession(self, client, cliID):
-        client.resumeSession(self.clientIDs[cliID])
+    def resumeSession(self, client):
+        client.resumeSession(self.clientIDs[client.ID])
         for topic in client.subscribe:
             self.clientSubscribe[topic].append(client.getAddr())
-        self.clientIDs[cliID] = client
+        self.clientIDs[client.ID] = client
 
     def setTopic(self, client, topic, QoS, messageID):
         client.setTopic(topic, QoS)
@@ -148,8 +148,8 @@ class Client():
         self.connection = True
         self.will = None
 
-    def setInfo(self, cliID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
-        self.cliID = cliID
+    def setInfo(self, ID, name = "", passwd = "", will = {}, keepAlive = 2, clean = 1):
+        self.ID = ID
         self.__name = name
         self.__passwd = passwd
         self.will = will
@@ -160,7 +160,6 @@ class Client():
         self.messageState = {}
 
     def resumeSession(self, client):
-        self.cliID = client.cliID
         self.__name = client.getName()
         self.__passwd = client.getPasswd()
         self.will = client.will #correct?

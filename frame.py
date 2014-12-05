@@ -145,11 +145,12 @@ class Frame(object):
             payLoadIdx = protoLen + 4
             cliId, idx = utfDecode(data[payLoadIdx:])
             payLoadIdx += idx
-            will = {"QoS": (flags & 0x18) >> 3, "retain": (flags & 0x20) >> 5}
-            will["topic"], idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
-            payLoadIdx += idx
-            will["message"], idx = utfDecode(data[payLoadIdx:]) if flags & 0x04 else ("", 0)
-            payLoadIdx += idx
+            will = {"QoS": (flags & 0x18) >> 3, "retain": (flags & 0x20) >> 5, "topic": "", "message": ""}
+            if flags & 0x04:
+                will["topic"], idx = utfDecode(data[payLoadIdx:])
+                payLoadIdx += idx
+                will["message"], idx = utfDecode(data[payLoadIdx:])
+                payLoadIdx += idx
             name, idx = utfDecode(data[payLoadIdx:]) if flags & 0x80 else ("", 0)
             payLoadIdx += idx
             passwd, idx = utfDecode(data[payLoadIdx:]) if flags & 0x40 else ("", 0)

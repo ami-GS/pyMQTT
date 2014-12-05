@@ -204,9 +204,9 @@ class Client():
         self.connection = False
         if self.will:
             self.sendWill()
-        self.__sock.close()
+        self.close()
         if self.clean:
-            self.server.clients.pop(self.__addr)
+            self.server.clients.pop(self.getAddr())
         print("disconnect")
 
     def unsetAcknowledge(self, messageID):

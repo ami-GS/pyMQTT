@@ -180,7 +180,7 @@ class Frame(object):
 
             if "server.Broker" in str(self):
                 # this should be called only if child class is Broker
-                self.publishAll(topic, pubData, messageID, retain)
+                self.publishAll(client, topic, pubData, messageID, retain)
 
         def puback(data):
             messageID = upackHex(data[:2])

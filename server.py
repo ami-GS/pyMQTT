@@ -102,7 +102,10 @@ class Broker(Frame):
 
         print("disconnect")
 
-    def publishAll(self, topic, message, messageID = 1, retain = 0):
+    def publishAll(self, client, topic, message, messageID = 1, retain = 0):
+        if topic not in client.publishes:
+            #TODO: not cool
+            client.setPublish(topic)
         if self.clientSubscribe.has_key(topic):
             for i, addrs in enumerate(self.clientSubscribe[topic]):
                 client = self.clients[addrs]
@@ -118,6 +121,15 @@ class Broker(Frame):
 
         if retain:
             self.topics[topic] = message #TODO: QoS shold also be saved
+
+    def sendWill(self, pubList, will):
+        for topic in pubList:
+            if self.clientSubscribe.has_key(topic):
+                for i, addrs in enumerate(self.clientSubscribe[topic]):
+                    client = self.clients[addrs]
+                    frame = self.makeFrame(TYPE.PUBLISH, 0, will["QoS"], 0, topic = will["topic"],
+                                           message = will["message"], messageID = i+1)
+                    client.send(frame) #TODO: manage unacknowledge state
 
     def setState(self, state, messageID, client):
         # unacknowledge state
@@ -155,6 +167,7 @@ class Client():
         self.will = will
         self.keepAlive = keepAlive
         self.timer = Timer(keepAlive * 1.5, self.disconnect)
+        self.publishes = []
         self.subscribe = {}
         self.clean = clean
         self.messageState = {}
@@ -165,6 +178,7 @@ class Client():
         self.will = client.will #correct?
         self.keepAlive = client.keepAlive
         self.timer = Timer(self.keepAlive * 1.5, self.disconnect)
+        self.publishes = client.publishes
         self.subscribe = client.subscribe
         self.clean = client.clean
         self.messageState = client.messageState
@@ -182,6 +196,9 @@ class Client():
             elif state[0] == "pubrel":
                 self.send(self.server.makeFrame(TYPE.PUBREL, 1, 1, 0, messageID = messageID))
 
+    def setPublish(self, topic):
+        self.publishes.append(topic)
+
     def getAddr(self):
         return self.__addr
 
@@ -195,9 +212,7 @@ class Client():
         return self.__passwd
 
     def sendWill(self):
-        frame = self.server.makeFrame(TYPE.PUBLISH, 0, self.will["QoS"], self.will["retain"],
-                                      topic = self.will["topic"], message = self.will["message"], messageID = 1)
-        self.send(frame)
+        self.server.sendWill(self.publishes, self.will)
 
     def disconnect(self):
         # when ping packet didn't came within the keepAlive * 1.5 sec

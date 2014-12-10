@@ -49,6 +49,12 @@ class Broker(Frame):
         if cliID in self.clientIDs.keys():
             if clean:
                 self.clientIDs.pop(cliID)
+            elif self.clientIDs[cliID].connection:
+                # TODO this is only the case of clean == False
+                print("The ID %s is already connecting, rejected" % cliID)
+                client.send(self.makeFrame(TYPE.CONNACK, 0, 0, 0, code = CR.R_ID_REJECTED))
+                client.disconnect()
+                return
             else:
                 #TODO: name and passwd validation shuld be here?
                 self.resumeSession(client)

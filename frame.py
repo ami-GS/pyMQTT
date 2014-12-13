@@ -18,18 +18,20 @@ class Frame(object):
             # this hard code is not cool
             frame = utfEncode(SUPPORT_PROTOCOLS[0]) # temporaly using ver 3.1
             frame += packHex(SUPPORT_PROTOCOL_VERSIONS[0])
-            flag = 1 << 7 if kwargs["name"] else 0 << 7 #TODO: there is the case withoug string
-            flag |= 1 << 6 if kwargs["passwd"] else 0 << 6
-            if kwargs["will"]:
+            flag = 1 << 7 if kwargs.has_key("name") else 0 << 7 #TODO: there is the case withoug string
+            flag |= 1 << 6 if kwargs.has_key("passwd") else 0 << 6
+            willData = ""
+            if kwargs.has_key("will"):
                 flag |= 1 << 5
                 flag |= kwargs["will"]["QoS"] << 3
                 flag |= 1 << 2
-            flag |= 1 << 1 if kwargs["clean"] else 0 << 1
+                willData = utfEncode(kwargs["will"]["topic"])
+                willData += utfEncode(kwargs["will"]["message"])
+            flag |= 1 << 1 if kwargs.has_key("clean") else 0 << 1
             frame += packHex(flag)
             frame += packHex(kwargs["keepAlive"], 4)
             frame += utfEncode(kwargs["cliID"]) if kwargs.has_key("cliID") else ""
-            frame += utfEncode(kwargs["will"]["topic"]) if kwargs.has_key("will") else ""
-            frame += utfEncode(kwargs["will"]["message"]) if kwargs.has_key("will") else ""
+            frame += willData
             frame += utfEncode(kwargs["name"]) if kwargs.has_key("name") else ""
             frame += utfEncode(kwargs["passwd"]) if kwargs.has_key("passwd") else ""
             # TODO: save these settings to server, if there is no cliID, then apply the ID from server

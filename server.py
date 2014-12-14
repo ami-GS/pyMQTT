@@ -99,14 +99,16 @@ class Broker(Frame):
         client.connection = False
         client.close()
         client.timer.cancel()
+        addr = client.getAddr()
+        ID = client.ID
         # the address should be removed even if the clean flag is not set.
         for topic in client.subscribe:
-            self.clientSubscribe[topic].remove(client.getAddr())
+            self.clientSubscribe[topic].remove(addr)
         if client.clean:
             # TODO: correct ?
-            self.clients.pop(client.getAddr())
+            self.clients.pop(addr)
 
-        print("disconnect")
+        print("disconnect from client %s (%s, %d)" % (ID, addr[0], addr[1]))
 
     def publishAll(self, client, topic, message, messageID = 1, retain = 0):
         if topic not in client.publishes:
@@ -228,7 +230,8 @@ class Client():
         self.close()
         if self.clean:
             self.server.clients.pop(self.getAddr())
-        print("disconnect")
+        print("disconnect from server to client %s (%s, %d)" %
+              (self.ID, self.__addr[0], self.__addr[1]))
 
     def unsetAcknowledge(self, messageID):
         self.messageState.pop(messageID)

@@ -1,7 +1,7 @@
 import frame as fm
 import socket
 from settings import TYPE
-from threading import Thread, Timer
+from threading import Thread, Timer, Event
 import time
 from frame import Frame
 
@@ -21,14 +21,19 @@ class Client(Frame):
         self.subscribes = {}
         self.subTmp = []
         self.unsubTmp = []
+        self.pingEvent = Event()
 
     def send(self, frame):
         self.sock.send(frame)
 
     def __recv(self, size = 1024):
-        while self.connection:
-            data = self.sock.recv(size)
-            self.parseFrame(data, self)
+        try:
+            while self.connection:
+                data = self.sock.recv(size)
+                self.parseFrame(data, self)
+        except Exception as e:
+            # TODO: exception should be defined
+            print e
 
     def connect(self, name = "", passwd = "", will = {}, clean = 0, keepAlive = 2):
         # TODO: above default value should be considered
@@ -47,14 +52,16 @@ class Client(Frame):
         self.pingThread.start()
 
     def disconnect(self):
+        # NOTICE: sometimes this is called shoter than the keep alive time,
+        #         threading.Timer bug?
         if not self.connection:
-            print("connection has already closed")
+            print("connection has already closed %s" % self.ID)
             return
         self.connection = False
         frame = self.makeFrame(TYPE.DISCONNECT, 0, 0, 0)
         self.send(frame)
         self.sock.close()
-        print("disconnect")
+        print("disconnect %s" % self.ID)
 
     def publish(self, topic, message, dup = 0, qos = 0, retain = 0, messageID = 1):
         if (qos == 1 or qos == 2) and messageID == 0:
@@ -96,14 +103,23 @@ class Client(Frame):
     def initTimer(self):
         self.timer.cancel()
         self.timer = Timer(self.keepAlive, self.disconnect)
+        self.pingEvent.set()
 
     def __pingreq(self):
         self.timer = Timer(self.keepAlive, self.disconnect)
-        while self.connection:
-            # Q: continuously send req? or send after receiving resp?
-            self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
-            self.timer.start()
-            time.sleep(self.keepAlive)
+        try:
+            while self.connection:
+                # Q: continuously send req? or send after receiving resp?
+                self.send(self.makeFrame(TYPE.PINGREQ, 0,0,0))
+                if not self.timer.is_alive():
+                    self.timer.start()
+                pingTime = time.time()
+                self.pingEvent.wait(self.keepAlive * 2) # Is this timeout appropriate?
+                time.sleep(self.keepAlive - (time.time() - pingTime))
+
+        except Exception as e:
+            print e, self.ID
+            pass
 
     def subscribe(self, topics, dup = 0, messageID = 1):
         # topics should be [[topic1, qos1], [topic2, qos2] ...]

@@ -164,7 +164,10 @@ class Frame(object):
         def connack(data):
             topicCompress = data[0]
             code = data[1]
-            self.startSession()
+            if code == CR.ACCEPTED:
+                self.startSession()
+            else:
+                pass
 
         def publish(data):
             topic, cursor = utfDecode(data)

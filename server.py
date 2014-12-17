@@ -70,29 +70,31 @@ class Broker(Frame):
             self.clientSubscribe[topic].append(client.getAddr())
         self.clientIDs[client.ID] = client
 
-    def setTopic(self, client, topic, QoS, messageID):
-        client.setTopic(topic, QoS)
-        if self.topics.has_key(topic) and self.topics[topic]:
-            # this is 'retain'
-            frame = self.makeFrame(TYPE.PUBLISH, 0, QoS, 1, topic = topic,
-                                message = self.topics[topic], messageID = messageID)
-            client.send(frame)
-            if QoS == 1 or QoS == 2:
-                self.setState(["publish", topic, message], messageID + i+1, client)
+    def setTopic(self, client, topics, QoSs, messageID):
+        for i in range(len(topics)):
+            client.setTopic(topics[i], QoSs[i])
+            if self.topics.has_key(topics[i]) and self.topics[topics[i]]:
+                # this is 'retain'
+                frame = self.makeFrame(TYPE.PUBLISH, 0, QoSs[i], 1, topic = topics[i],
+                                    message = self.topics[topics[i]], messageID = messageID)
+                client.send(frame)
+                if QoSs[i] == 1 or QoSs[i] == 2:
+                    self.setState(["publish", topics[i], message], messageID + i+1, client)
 
-        if self.clientSubscribe.has_key(topic):
-            self.clientSubscribe[topic].append(client.getAddr())
-        else:
-            self.clientSubscribe[topic] = [client.getAddr()]
+            if self.clientSubscribe.has_key(topics[i]):
+                self.clientSubscribe[topics[i]].append(client.getAddr())
+            else:
+                self.clientSubscribe[topics[i]] = [client.getAddr()]
 
-    def unsetTopic(self, client, topic):
-        if client.getAddr() in self.clientSubscribe[topic]:
-            self.clientSubscribe[topic].remove(client.getAddr())
-            client.unsetTopic(topic)
-        else:
-            # TODO: this should be removed in the future
-            addr = client.getAddr()
-            print("(%s, %d) doesn't exist in %s" % (addr[0], addr[1], topic))
+    def unsetTopic(self, client, topics):
+        for topic in topics:
+            if client.getAddr() in self.clientSubscribe[topic]:
+                self.clientSubscribe[topic].remove(client.getAddr())
+                client.unsetTopic(topic)
+            else:
+                # TODO: this should be removed in the future
+                addr = client.getAddr()
+                print("(%s, %d) doesn't exist in %s" % (addr[0], addr[1], topic))
 
     def disconnect(self, client):
         # when get DISCONNECT packet from client

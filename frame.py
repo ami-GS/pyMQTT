@@ -4,7 +4,6 @@ from util import upackHex, packHex, utfEncode, utfDecode
 from settings import TYPE
 from settings import ConnectReturn as CR
 
-# TODO: this should be class, and each instance should has cliID, name, etc.. info.
 class Frame(object):
     def __init__(self):
         self.idx = 0
@@ -24,7 +23,7 @@ class Frame(object):
 
         def connect():
             # this hard code is not cool
-            frame = utfEncode(SUPPORT_PROTOCOLS[0]) # temporaly using ver 3.1
+            frame = utfEncode(SUPPORT_PROTOCOLS[0])
             frame += packHex(SUPPORT_PROTOCOL_VERSIONS[0])
             flag = 1 << 7 if kwargs.has_key("name") else 0 << 7 #TODO: there is the case withoug string
             flag |= 1 << 6 if kwargs.has_key("passwd") else 0 << 6
@@ -78,7 +77,6 @@ class Frame(object):
 
         def subscribe():
             frame = packHex(kwargs["messageID"], 4)
-            # looks not cool
             for topic in kwargs["topics"]:
                 frame += utfEncode(topic[0])
                 frame += packHex(topic[1], 2)
@@ -128,7 +126,7 @@ class Frame(object):
         elif t == TYPE.PINGRESP:
             data = "" # no payload
         elif t == TYPE.DISCONNECT:
-            data = "" # no payload, I have to manage 'Clean session' flag
+            data = "" # no payload
         else:
             print("undefined type")
 
@@ -146,7 +144,6 @@ class Frame(object):
             return t, dub, qos, retain, restLen, idx+1
 
         def connect(data):
-            # TODO: client object should be made to save these flags
             proto = self.getIncrement(data)
             protoVersion = upackHex(data[self.idx])
             flags = upackHex(data[self.idx + 1])
@@ -180,7 +177,6 @@ class Frame(object):
         def puback(data):
             messageID = upackHex(data[:2])
             return messageID
-            # delete message ?
 
         def pubrec(data):
             messageID = upackHex(data[:2])
@@ -206,7 +202,6 @@ class Frame(object):
                 allowedQoSs.append(reqQoS)
                 self.idx += 1
             return messageID, topics, allowedQoSs
-            # publish may be sent
 
         def suback(data):
             messageID = upackHex(data[:2])
@@ -236,8 +231,6 @@ class Frame(object):
 
         def disconnect(data):
             pass
-            # do something based on clean session info
-            # disconnect TCP
 
         while data:
             self.idx = 0

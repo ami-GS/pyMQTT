@@ -159,15 +159,12 @@ class Frame(object):
             payLoadIdx += idx
             clean = flags & 0x02
 
-            self.setClient(client, cliId, name, passwd, will, keepAlive, clean)
+            return cliId, name, passwd, will, keepAlive, clean
 
         def connack(data):
             topicCompress = data[0]
             code = data[1]
-            if code == CR.ACCEPTED:
-                self.startSession()
-            else:
-                pass
+            return code
 
         def publish(data):
             topic, cursor = utfDecode(data)
@@ -177,48 +174,37 @@ class Frame(object):
                 cursor += 2
             pubData, pubLen = utfDecode(data[cursor:]) if len(data[cursor:]) else ("", 0) # correct?
             cursor += pubLen
-            if qos == 1:
-                client.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
-            elif qos == 2:
-                client.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
-                self.setState(["pubrec"], messageID, client)
-
-            if "server.Broker" in str(self):
-                # this should be called only if child class is Broker
-                self.publishAll(client, topic, pubData, messageID, retain)
+            return messageID, qos, topic, pubData
 
         def puback(data):
             messageID = upackHex(data[:2])
-            self.puback(messageID)
+            return messageID
             # delete message ?
 
         def pubrec(data):
             messageID = upackHex(data[:2])
-            self.pubrec(messageID)
-            client.send(self.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID))
-            self.setState(["pubrel"], messageID, client)
+            return messageID
 
         def pubrel(data):
             messageID = upackHex(data[:2])
-            client.send(self.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID))
-            self.pubrel(messageID)
+            return messageID
 
         def pubcomp(data):
             messageID = upackHex(data[:2])
-            self.pubcomp(messageID)
+            return messageID
 
         def subscribe(data):
             c = 2
             messageID = upackHex(data[:c])
+            topics = []
             allowedQoSs = []
             while data[c:]:
                 topic, topicLen = utfDecode(data[c:])
                 reqQoS = upackHex(data[c+topicLen])
-                self.setTopic(client, topic, reqQoS, messageID)
+                topics.append(topic)
                 allowedQoSs.append(reqQoS)
                 c += topicLen + 1
-            client.send(self.makeFrame(TYPE.SUBACK, 0, 0, 0, messageID = messageID,
-                                       qosList = allowedQoSs))
+            return messageID, topics, allowedQoSs
             # publish may be sent
 
         def suback(data):
@@ -228,62 +214,107 @@ class Frame(object):
             for q in data[2:]:
                 allowedQoSs.append(upackHex(q))
                 c += 1
-            self.setSubscribe(allowedQoSs)
+            return messageID, allowedQoSs
 
         def unsubscribe(data):
             c = 2
             messageID = upackHex(data[:c])
+            topics = []
             while data[c:]:
                 topic, topicLen = utfDecode(data[c:])
-                self.unsetTopic(client, topic)
+                topics.append(topic)
                 c += topicLen
-            client.send(self.makeFrame(TYPE.UNSUBACK, 0, 0, 0, messageID = messageID))
+            return messageID, topics
 
         def unsuback(data):
             messageID = upackHex(data[:2])
-            self.unsetSubscribe()
+            return messageID
 
         def pingreq(data):
-            client.send(self.makeFrame(TYPE.PINGRESP, 0, 0, 0))
+            pass
 
         def pingresp(data):
-            self.initTimer()
+            pass
 
         def disconnect(data):
-            self.disconnect(client)
+            pass
             # do something based on clean session info
             # disconnect TCP
 
         while data:
             t, dup, qos, retain, length, idx = parseHeader(data)
             if t == TYPE.CONNECT:
-                connect(data[idx:idx+length])
+                cliId, name, passwd, will, keepAlive, clean = connect(data[idx:idx+length])
+                self.setClient(client, cliId, name, passwd, will, keepAlive, clean)
+
             elif t == TYPE.CONNACK:
-                connack(data[idx:idx+length])
+                code = connack(data[idx:idx+length])
+                if code == CR.ACCEPTED:
+                    self.startSession()
+                else:
+                    pass
+
             elif t == TYPE.PUBLISH:
-                publish(data[idx:idx+length])
+                messageID, qos, topic, pubData = publish(data[idx:idx+length])
+                if qos == 1:
+                    client.send(self.makeFrame(TYPE.PUBACK, 0, 0, 0, messageID = messageID))
+                elif qos == 2:
+                    client.send(self.makeFrame(TYPE.PUBREC, 0, 0, 0, messageID = messageID))
+                    self.setState(["pubrec"], messageID, client)
+
+                if "server.Broker" in str(self):
+                    # this should be called only if child class is Broker
+                    self.publishAll(client, topic, pubData, messageID, retain)
+
             elif t == TYPE.PUBACK:
-                puback(data[idx:idx+length])
+                messageID = puback(data[idx:idx+length])
+                self.puback(messageID)
+
             elif t == TYPE.PUBREC:
-                pubrec(data[idx:idx+length])
+                messageID = pubrec(data[idx:idx+length])
+                self.pubrec(messageID)
+                client.send(self.makeFrame(TYPE.PUBREL, 0, 1, 0, messageID = messageID))
+                self.setState(["pubrel"], messageID, client)
+
             elif t == TYPE.PUBREL:
-                pubrel(data[idx:idx+length])
+                messageID = pubrel(data[idx:idx+length])
+                client.send(self.makeFrame(TYPE.PUBCOMP, 0, 0, 0, messageID = messageID))
+                self.pubrel(messageID)
+
             elif t == TYPE.PUBCOMP:
-                pubcomp(data[idx:idx+length])
+                messageID = pubcomp(data[idx:idx+length])
+                self.pubcomp(messageID)
+
             elif t == TYPE.SUBSCRIBE:
-                subscribe(data[idx:idx+length])
+                messageID, topics, QoSs = subscribe(data[idx:idx+length])
+                self.setTopic(client, topics, QoSs, messageID)
+                client.send(self.makeFrame(TYPE.SUBACK, 0, 0, 0, messageID = messageID, qosList = QoSs))
+
             elif t == TYPE.SUBACK:
-                suback(data[idx:idx+length])
+                messageID, QoSs = suback(data[idx:idx+length])
+                self.setSubscribe(QoSs)
+
             elif t == TYPE.UNSUBSCRIBE:
-                unsubscribe(data[idx:idx+length])
+                messageID, topics = unsubscribe(data[idx:idx+length])
+                self.unsetTopic(client, topics)
+                client.send(self.makeFrame(TYPE.UNSUBACK, 0, 0, 0, messageID = messageID))
+
             elif t == TYPE.UNSUBACK:
-                unsuback(data[idx:idx+length])
+                messageID = unsuback(data[idx:idx+length])
+                self.unsetSubscribe()
+
             elif t == TYPE.PINGREQ:
                 pingreq(data[idx:idx+length])
+                client.send(self.makeFrame(TYPE.PINGRESP, 0, 0, 0))
+
             elif t == TYPE.PINGRESP:
                 pingresp(data[idx:idx+length])
+                self.initTimer()
+
             elif t == TYPE.DISCONNECT:
                 disconnect(data[idx:idx+length])
+                self.disconnect(client)
+
             else:
                 print("undefined type")
             data = data[idx+length:]

@@ -6,6 +6,14 @@ from settings import ConnectReturn as CR
 
 # TODO: this should be class, and each instance should has cliID, name, etc.. info.
 class Frame(object):
+    def __init__(self):
+        self.idx = 0
+
+    def getIncrement(self, payload):
+        data, idx = utfDecode(payload)
+        self.idx += idx
+        return data
+
     def makeFrame(self, t, dup, qos, retain, **kwargs):
         data = ""
         def makeHeader(length):
@@ -139,24 +147,19 @@ class Frame(object):
 
         def connect(data):
             # TODO: client object should be made to save these flags
-            proto, protoLen = utfDecode(data)
-            protoVersion = upackHex(data[protoLen])
-            flags = upackHex(data[protoLen + 1])
-            keepAlive = upackHex(data[protoLen + 2:protoLen + 4])
+            proto = self.getIncrement(data)
+            protoVersion = upackHex(data[self.idx])
+            flags = upackHex(data[self.idx + 1])
+            keepAlive = upackHex(data[self.idx + 2:self.idx + 4])
 
-            payLoadIdx = protoLen + 4
-            cliId, idx = utfDecode(data[payLoadIdx:])
-            payLoadIdx += idx
+            self.idx += 4
+            cliId = self.getIncrement(data[self.idx:])
             will = {"QoS": (flags & 0x18) >> 3, "retain": (flags & 0x20) >> 5, "topic": "", "message": ""}
             if flags & 0x04:
-                will["topic"], idx = utfDecode(data[payLoadIdx:])
-                payLoadIdx += idx
-                will["message"], idx = utfDecode(data[payLoadIdx:])
-                payLoadIdx += idx
-            name, idx = utfDecode(data[payLoadIdx:]) if flags & 0x80 else ("", 0)
-            payLoadIdx += idx
-            passwd, idx = utfDecode(data[payLoadIdx:]) if flags & 0x40 else ("", 0)
-            payLoadIdx += idx
+                will["topic"] = self.getIncrement(data[self.idx:])
+                will["message"] = self.getIncrement(data[self.idx:])
+            name = self.getIncrement(data[self.idx:]) if flags & 0x80 else ""
+            passwd = self.getIncrement(data[self.idx:]) if flags & 0x40 else ""
             clean = flags & 0x02
 
             return cliId, name, passwd, will, keepAlive, clean
@@ -167,13 +170,11 @@ class Frame(object):
             return code
 
         def publish(data):
-            topic, cursor = utfDecode(data)
+            topic = self.getIncrement(data)
             messageID = 1
             if 1 <= qos <= 2:
-                messageID = upackHex(data[cursor:2+cursor])
-                cursor += 2
-            pubData, pubLen = utfDecode(data[cursor:]) if len(data[cursor:]) else ("", 0) # correct?
-            cursor += pubLen
+                messageID = upackHex(data[self.idx:self.idx + 2])
+            pubData = self.getIncrement(data[self.idx:]) if len(data[self.idx:]) else ""
             return messageID, qos, topic, pubData
 
         def puback(data):
@@ -194,36 +195,33 @@ class Frame(object):
             return messageID
 
         def subscribe(data):
-            c = 2
-            messageID = upackHex(data[:c])
+            self.idx += 2
+            messageID = upackHex(data[:self.idx])
             topics = []
             allowedQoSs = []
-            while data[c:]:
-                topic, topicLen = utfDecode(data[c:])
-                reqQoS = upackHex(data[c+topicLen])
+            while data[self.idx:]:
+                topic = self.getIncrement(data[self.idx:])
+                reqQoS = upackHex(data[self.idx])
                 topics.append(topic)
                 allowedQoSs.append(reqQoS)
-                c += topicLen + 1
+                self.idx += 1
             return messageID, topics, allowedQoSs
             # publish may be sent
 
         def suback(data):
-            c = 2
-            messageID = upackHex(data[:c])
+            messageID = upackHex(data[:2])
             allowedQoSs = []
             for q in data[2:]:
                 allowedQoSs.append(upackHex(q))
-                c += 1
             return messageID, allowedQoSs
 
         def unsubscribe(data):
-            c = 2
-            messageID = upackHex(data[:c])
+            self.idx += 2
+            messageID = upackHex(data[:self.idx])
             topics = []
-            while data[c:]:
-                topic, topicLen = utfDecode(data[c:])
+            while data[self.idx:]:
+                topic = self.getIncrement(data[self.idx:])
                 topics.append(topic)
-                c += topicLen
             return messageID, topics
 
         def unsuback(data):
@@ -242,6 +240,7 @@ class Frame(object):
             # disconnect TCP
 
         while data:
+            self.idx = 0
             t, dup, qos, retain, length, idx = parseHeader(data)
             if t == TYPE.CONNECT:
                 cliId, name, passwd, will, keepAlive, clean = connect(data[idx:idx+length])

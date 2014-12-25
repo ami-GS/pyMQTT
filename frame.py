@@ -244,7 +244,7 @@ class Frame(object):
                 if code == CR.ACCEPTED:
                     self.startSession()
                 else:
-                    pass
+                    print(CR.string(code)) #temporaly just print
 
             elif t == TYPE.PUBLISH:
                 messageID, qos, topic, pubData = publish(data[idx:idx+length])

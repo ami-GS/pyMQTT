@@ -23,6 +23,23 @@ class ConnectReturn():
     ACCEPTED = "\x00"
     R_UNACCEPTABLE_PROTOCOL_VERSION = "\x01"
     R_ID_REJECTED = "\02"
-    R_SERVER_UNABAILABEL = "\x03"
+    R_SERVER_UNAVAILABLE = "\x03"
     R_BAD_NAME_PASS = "\04"
     R_NOT_AUTHORIZED = "\x05"
+
+    @classmethod
+    def string(cls, num):
+        if num == cls.ACCEPTED:
+            return "CONNECTION ACCEPTED"
+        elif num == cls.R_UNACCEPTABLE_PROTOCOL_VERSION:
+            return "UNACCEPTABLE PROTOCOL VERSION"
+        elif num == cls.R_ID_REJECTED:
+            return "IDENTIFIER REJECTED"
+        elif num == cls.R_SERVER_UNAVAILABLE:
+            return "SERVER UNAVAILABLE"
+        elif num == cls.R_BAD_NAME_PASS:
+            return "BAD USER NAME OR PASSWORD"
+        elif num == cls.R_NOT_AUTHORIZED:
+            return "NOT AUTHORIZED"
+        else:
+            return "WARNNING: undefined code"

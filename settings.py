@@ -19,6 +19,39 @@ class TYPE():
     DISCONNECT = "\x0e"
     R_15 = "\x0f"
 
+    @classmethod
+    def string(cls, num):
+        if num == cls.CONNECT:
+            return "CONNECT"
+        elif num == cls.CONNACK:
+            return "CONNACK"
+        elif num == cls.PUBLISH:
+            return "PUBLISH"
+        elif num == cls.PUBACK:
+            return "PUBACK"
+        elif num == cls.PUBREC:
+            return "PUBREC"
+        elif num == cls.PUBREL:
+            return "PUBREL"
+        elif num == cls.PUBCOMP:
+            return "PUBCOMP"
+        elif num == cls.SUBSCRIBE:
+            return "SUBSCRIBE"
+        elif num == cls.SUBACK:
+            return "SUBACK"
+        elif num == cls.UNSUBSCRIBE:
+            return "UNSUBSCRIBE"
+        elif num == cls.UNSUBACK:
+            return "UNSUBACK"
+        elif num == cls.PINGREQ:
+            return "PINGREQ"
+        elif num == cls.PINGRESP:
+            return "PINGRESP"
+        elif num == cls.DISCONNECT:
+            return "DISCONNECT"
+        else:
+            return "WARNNING: undefined type %s" % num
+
 class ConnectReturn():
     ACCEPTED = "\x00"
     R_UNACCEPTABLE_PROTOCOL_VERSION = "\x01"
@@ -42,4 +75,4 @@ class ConnectReturn():
         elif num == cls.R_NOT_AUTHORIZED:
             return "NOT AUTHORIZED"
         else:
-            return "WARNNING: undefined code"
+            return "WARNNING: undefined code %s" % num
